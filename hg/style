@@ -1,0 +1,4 @@
+changeset = 'commit {node}|{date|isodate}|{author}\n{file_adds}{file_mods}{file_dels}'
+file_add = 'file A|{file_add}\n'
+file_mod = 'file M|{file_mod}\n'
+file_del = 'file R|{file_del}\n'
