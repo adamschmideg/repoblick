@@ -27,9 +27,10 @@ def repo_inits(user, project, dir='/tmp', count=2):
   orig_repo = 'https://bitbucket.org/%s/%s' % (user, project)
   clone_repo = os.path.join(user_dir, project)
   if os.path.exists(clone_repo):
-    p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', clone_repo], stdout=PIPE)
+    p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', clone_repo])
   else:
-    p = Popen(['hg', 'clone', '-r', str(count - 1), orig_repo, clone_repo], stdout=PIPE)
+    p = Popen(['hg', 'clone', '-r', str(count - 1), orig_repo, clone_repo])
+  p.wait()
   p = Popen(['hg', 'log', '-R', clone_repo, '--template', '{diffstat}\n'], stdout=PIPE)
   for line in p.stdout.readlines():
     m = re.match('([0-9]+):\s*\+([0-9]+)/\-([0-9]+)', line)
