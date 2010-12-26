@@ -43,17 +43,16 @@ class SqliteStore:
       
   def project(self, owner, name):
     id = '%s/%s' % (owner, name)
-    self.connection.execute('insert into projects values("%s", "%s", "%s")' %
+    self.connection.execute('insert into projects values(?, ?, ?)',
       (owner, name, id))
     return id
 
   def commit(self, author, date, hash, projectid):
-    date = int(time.mktime(date.timetuple()))
-    self.connection.execute('insert into commits values("%s", %s, "%s", %s)' %
+    self.connection.execute('insert into commits values(?, ?, ?, ?)',
       (author, date, hash, projectid))
     return hash
 
   def file(self, file, hash, changetype, added, modified, deleted):
-    self.connection.execute('insert into files values("%s", "%s", "%s", %s, %s, %s)' %
+    self.connection.execute('insert into files values(?, ?, ?, ?, ?, ?)',
       (file, hash, changetype, added, modified, deleted))
     
