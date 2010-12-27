@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from mercurial import patch, util
 from subprocess import Popen, PIPE
 import os
@@ -20,6 +21,8 @@ def commits(repo):
   for line in p.stdout.readlines():
     line = line.rstrip()
     hash, date, author, message, files_add, files_mod, files_del = line.split('|')
+    ts, offset = [int(d) for d in date.split(' ')]
+    date = datetime.fromtimestamp(ts) + timedelta(seconds=offset)
     files = {}
     for f in fileSplit(files_add):
       files[f] = ADD
