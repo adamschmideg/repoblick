@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from mercurial import patch, util
+from mercurial import hg, patch, ui, util
 from subprocess import Popen, PIPE
 from utils import Timer
 import os
@@ -37,6 +37,8 @@ class HgMirror:
     self.localRoot = localRoot
     self.owner = owner
     self.project = project
+    # for performance reasons
+    self.ui = ui.ui()
 
   @property
   def localRepo(self):
@@ -92,7 +94,9 @@ class HgMirror:
 
   def changes(self, commit):
     "Return FileChange instances"
-    p = Popen(['hg', 'diff', '-R', self.localRepo, '-c', commit.hash], stdout=PIPE)
-    lines = util.iterlines(p.stdout.readlines())
+    repo = hg.repository(self.ui, path=self.localRepo)
+    node2 = repo.lookup(commit.hash)
+    node1 = repo[node2].parents()[0].node()
+    lines = util.iterlines(patch.diff(repo, node1, node2))
     for f in patch.diffstatdata(lines):
       yield FileChange(f[0], commit.hash, commit.fileChanges[f[0]], f[1], f[2], f[3])
