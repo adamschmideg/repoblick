@@ -2,6 +2,7 @@
 Store repodata in a persistent format, like a database or csv files
 """
 import sqlite3, time
+from utils import Timer
 
 class SqliteStore:
 
@@ -58,20 +59,23 @@ class SqliteStore:
     
   def importLog(self, mirror):
     "Import logs of a repoMirror into this store"
-    try:
-      project = self.project(mirror.owner, mirror.project)
-    except sqlite3.IntegrityError:
-      # project already exists, delete its logs
-      project = '%s/%s' % (mirror.owner, mirror.project)
-      self.connection.execute('''
-        delete from files where commithash in
-          (select hash from commits where project=?)''',
-        (project,))
-      self.connection.execute('delete from commits where project=?',
-        (project,))
-    for commit in mirror.commits():
-      commit.project = project
-      self.commit(commit)
-      for fileChange in mirror.changes(commit):
-        self.file(fileChange)
-    self.connection.commit()
+    with Timer('Import %s' % mirror.project):
+      try:
+        project = self.project(mirror.owner, mirror.project)
+      except sqlite3.IntegrityError:
+        # project already exists, delete its logs
+        project = '%s/%s' % (mirror.owner, mirror.project)
+        self.connection.execute('''
+          delete from files where commithash in
+            (select hash from commits where project=?)''',
+          (project,))
+        self.connection.execute('delete from commits where project=?',
+          (project,))
+      cnt = 0
+      for commit in mirror.commits():
+        cnt += 1
+        commit.project = project
+        self.commit(commit)
+        for fileChange in mirror.changes(commit):
+          self.file(fileChange)
+      self.connection.commit()

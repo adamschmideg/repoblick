@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from mercurial import patch, util
 from subprocess import Popen, PIPE
+from utils import Timer
 import os
 
 ADD = 'A'
@@ -47,22 +48,23 @@ class HgMirror:
 
   def mirror(self, count=2):
     "Mirror count number of commits from remote to local"
-    ownerDir = os.path.join(self.localRoot, self.owner)
-    if not os.path.exists(ownerDir):
-      os.mkdir(ownerDir)
-    devnull = open(os.devnull, 'w')
-    if os.path.exists(self.localRepo):
-      if count:
-        p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.localRepo], stdout=devnull)
+    with Timer('Mirror %s' % self.project):
+      ownerDir = os.path.join(self.localRoot, self.owner)
+      if not os.path.exists(ownerDir):
+        os.mkdir(ownerDir)
+      devnull = open(os.devnull, 'w')
+      if os.path.exists(self.localRepo):
+        if count:
+          p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.localRepo], stdout=devnull)
+        else:
+          p = Popen(['hg', 'pull', '-R', self.localRepo], stdout=devnull)
       else:
-        p = Popen(['hg', 'pull', '-R', self.localRepo], stdout=devnull)
-    else:
-      if count:
-        p = Popen(['hg', 'clone', '-r', str(count - 1), self.remoteRepo, self.localRepo], stdout=devnull)
-      else:
-        p = Popen(['hg', 'clone', self.remoteRepo, self.localRepo], stdout=devnull)
-    p.wait()
-    devnull.close()
+        if count:
+          p = Popen(['hg', 'clone', '-r', str(count - 1), self.remoteRepo, self.localRepo], stdout=devnull)
+        else:
+          p = Popen(['hg', 'clone', self.remoteRepo, self.localRepo], stdout=devnull)
+      p.wait()
+      devnull.close()
 
   def commits(self):
     """Return Commit instances"""
