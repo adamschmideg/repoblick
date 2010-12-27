@@ -2,7 +2,7 @@
 Store repodata in a persistent format, like a database or csv files
 """
 import sqlite3, time
-from utils import Timer
+from utils import Timer, fileSize
 
 class SqliteStore:
 
@@ -79,3 +79,4 @@ class SqliteStore:
         for fileChange in mirror.changes(commit):
           self.file(fileChange)
       self.connection.commit()
+    print 'Storage used:\t%s' % fileSize(self.path)
