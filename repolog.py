@@ -12,26 +12,24 @@ class SqliteStore:
     tables = (
       '''
       projects (
-        owner text,
-        name text,
-        id text primary key
+        project text primary key
       )''',
       '''
       commits (
         author text,
         date timestamp,
         hash text primary key,
-        projectid text,
-        foreign key(projectid) references projects(id)
+        project text,
+        foreign key(project) references projects(project)
       )''',
       '''
       files (
-        file text,
         commithash text,
         changetype char(1),
         added integer,
-        modified integer,
         deleted integer,
+        file text,
+        isbinary boolean,
         foreign key(commithash) references commits(hash)
       )''',
     )
@@ -42,17 +40,29 @@ class SqliteStore:
         print e, t
       
   def project(self, owner, name):
-    id = '%s/%s' % (owner, name)
-    self.connection.execute('insert into projects values(?, ?, ?)',
-      (owner, name, id))
-    return id
+    project = '%s/%s' % (owner, name)
+    self.connection.execute('insert into projects values(?)', (project,))
+    return project
 
-  def commit(self, author, date, hash, projectid):
-    self.connection.execute('insert into commits values(?, ?, ?, ?)',
-      (author, date, hash, projectid))
+  def commit(self, commit):
+    self.connection.execute('''
+      insert into commits(author, date, hash, project)
+      values(:author, :date, :hash, :project)''',
+      commit.__dict__)
     return hash
 
-  def file(self, file, hash, changetype, added, modified, deleted):
-    self.connection.execute('insert into files values(?, ?, ?, ?, ?, ?)',
-      (file, hash, changetype, added, modified, deleted))
+  def file(self, fileChange):
+    self.connection.execute('''
+      insert into files(file, commithash, changetype, added, deleted, isbinary)
+      values(:filename, :commitHash, :changeType, :addedLines, :deletedLines, :isBinary)''',
+      fileChange.__dict__)
     
+  def importLog(self, mirror):
+    "Import logs of a repoMirror into this store"
+    project = self.project(mirror.owner, mirror.project)
+    for commit in mirror.commits():
+      commit.project = project
+      self.commit(commit)
+      for fileChange in mirror.changes(commit):
+        self.file(fileChange)
+    self.connection.commit()
