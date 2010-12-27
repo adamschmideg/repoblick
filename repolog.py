@@ -1,12 +1,11 @@
 """
 Store repodata in a persistent format, like a database or csv files
 """
-import time
+import sqlite3, time
 
 class SqliteStore:
 
   def __init__(self, path):
-    import sqlite3
     self.path = path
     self.connection = sqlite3.connect(path)
     tables = (
@@ -59,7 +58,17 @@ class SqliteStore:
     
   def importLog(self, mirror):
     "Import logs of a repoMirror into this store"
-    project = self.project(mirror.owner, mirror.project)
+    try:
+      project = self.project(mirror.owner, mirror.project)
+    except sqlite3.IntegrityError:
+      # project already exists, delete its logs
+      project = '%s/%s' % (mirror.owner, mirror.project)
+      self.connection.execute('''
+        delete from files where commithash in
+          (select hash from commits where project=?)''',
+        (project,))
+      self.connection.execute('delete from commits where project=?',
+        (project,))
     for commit in mirror.commits():
       commit.project = project
       self.commit(commit)
