@@ -1,4 +1,4 @@
-changeset = '{node}|{date|hgdate}|{author}|{desc}|{file_adds}|{file_mods}|{file_dels}\n'
+changeset = '{node}|{date|hgdate}|{author}|{desc|firstline}|{file_adds}|{file_mods}|{file_dels}\n'
 file_add = '{file_add};'
 last_file_add = '{file_add}'
 file_mod = '{file_mod};'

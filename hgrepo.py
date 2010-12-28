@@ -32,28 +32,32 @@ class FileChange:
 class HgMirror:
   "Local mirror of a remote hg repo"
 
-  def __init__(self, owner, project, remoteRoot='https://bitbucket.org/', localRoot='/tmp'):
+  def __init__(self, project, remoteRoot='https://bitbucket.org', localRoot='/tmp',
+      commitCount=None, watchers=None, forks=None, language=None):
     self.remoteRoot = remoteRoot
-    self.localRoot = localRoot
-    self.owner = owner
+    self.localRoot = os.path.abspath(localRoot)
     self.project = project
+    self.commitCount = commitCount
+    self.watchers = watchers
+    self.forks = forks
+    self.language = language
     # for performance reasons
     self.ui = ui.ui()
 
+  def __str__(self):
+    return 'HgMirror(remoteRepo=%s, localRepo=%s)' % (self.remoteRepo, self.localRepo)
+
   @property
   def localRepo(self):
-    return os.path.join(self.localRoot, self.owner, self.project)
+    return os.path.join(self.localRoot, self.project)
 
   @property
   def remoteRepo(self):
-    return '%s/%s/%s' % (self.remoteRoot, self.owner, self.project)
+    return '%s/%s' % (self.remoteRoot, self.project)
 
   def mirror(self, count=2):
     "Mirror count number of commits from remote to local"
     with Timer('Mirror %s' % self.project):
-      ownerDir = os.path.join(self.localRoot, self.owner)
-      if not os.path.exists(ownerDir):
-        os.mkdir(ownerDir)
       devnull = open(os.devnull, 'w')
       if os.path.exists(self.localRepo):
         if count:
@@ -61,6 +65,7 @@ class HgMirror:
         else:
           p = Popen(['hg', 'pull', '-R', self.localRepo], stdout=devnull)
       else:
+        os.makedirs(self.localRepo)
         if count:
           p = Popen(['hg', 'clone', '-r', str(count - 1), self.remoteRepo, self.localRepo], stdout=devnull)
         else:

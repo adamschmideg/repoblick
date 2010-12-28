@@ -2,4 +2,5 @@ syntax:glob
 *.swp
 *.pyc
 *.log
+*.db
 devel.*

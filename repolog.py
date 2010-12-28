@@ -12,7 +12,13 @@ class SqliteStore:
     tables = (
       '''
       projects (
-        project text primary key
+        project text primary key,
+        host text,
+        commits integer,
+        watchers integer,
+        forks integer,
+        language text,
+        cloned integer
       )''',
       '''
       commits (
@@ -39,10 +45,11 @@ class SqliteStore:
       except sqlite3.OperationalError, e:
         print e, t
       
-  def project(self, owner, name):
-    project = '%s/%s' % (owner, name)
-    self.connection.execute('insert into projects values(?)', (project,))
-    return project
+  def project(self, mirror):
+    self.connection.execute('''
+      insert into projects (project, host, commits, watchers, forks, language)
+      values(:project, :remoteRoot, :commitCount, :watchers, :forks, :language)''',
+      mirror.__dict__)
 
   def commit(self, commit):
     self.connection.execute('''
@@ -61,20 +68,19 @@ class SqliteStore:
     "Import logs of a repoMirror into this store"
     with Timer('Import %s' % mirror.project):
       try:
-        project = self.project(mirror.owner, mirror.project)
+        self.project(mirror)
       except sqlite3.IntegrityError:
         # project already exists, delete its logs
-        project = '%s/%s' % (mirror.owner, mirror.project)
         self.connection.execute('''
           delete from files where commithash in
             (select hash from commits where project=?)''',
-          (project,))
+          (mirror.project,))
         self.connection.execute('delete from commits where project=?',
-          (project,))
+          (mirror.project,))
       cnt = 0
       for commit in mirror.commits():
         cnt += 1
-        commit.project = project
+        commit.project = mirror.project
         self.commit(commit)
         for fileChange in mirror.changes(commit):
           self.file(fileChange)
