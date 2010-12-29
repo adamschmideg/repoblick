@@ -13,26 +13,60 @@ class SqliteStore:
     with open(createScript) as script:
       self.cursor.executescript(script.read())
       
-  def project(self, mirror):
-    self.cursor.execute('''
-      insert into projects (project, host, commits, watchers, forks, language)
-      values(:project, :remoteRoot, :commitCount, :watchers, :forks, :language)''',
-      mirror.__dict__)
-    return self.cursor.lastrowid
+  def addHost(self, hostName, urnPattern):
+    try:
+      self.cursor.execute('''
+        insert into hosts (name, urnpattern)
+        values(?, ?)''',
+        (hostName, urnPattern))
+      return self.cursor.lastrowid, True
+    except sqlite3.IntegrityError:
+      id = self.cursor.execute('select id from hosts where name=? and urnpattern=?', 
+        (hostName, urnPattern)).fetchone()[0]
+      return id, False
 
-  def commit(self, projectid, commit):
-    self.cursor.execute('''
-      insert into commits(author, date, hash, projectid)
-      values(:author, :date, :hash, :projectid)''',
-      dict(commit.__dict__, projectid=projectid))
-    return self.cursor.lastrowid
+  def addProject(self, hostid, name, attrs=None):
+    try:
+      self.cursor.execute('''
+        insert into projects (hostid, name)
+        values(?, ?)''',
+        (hostid, name))
+      id = self.cursor.lastrowid
+      if attrs:
+        for k, v in attrs.items():
+          self.cursor.execute('''
+          insert into projectattrs (projectid, key, value)
+          values(?, ?, ?)''',
+          (id, k, v))
+      return id, True
+    except sqlite3.IntegrityError:
+      id = self.cursor.execute('select id from projects where hostid=? and name=?',
+        (hostid, name)).fetchone()[0]
+      return id, False
 
-  def file(self, commitid, fileChange):
-    self.cursor.execute('''
-      insert into files(file, commitid, changetype, added, deleted, isbinary)
-      values(:filename, :commitid, :changeType, :addedLines, :deletedLines, :isBinary)''',
-      dict(fileChange.__dict__, commitid=commitid))
-    return self.cursor.lastrowid
+  def addCommit(self, projectid, commit):
+    try:
+      self.cursor.execute('''
+        insert into commits(author, date, hash, projectid)
+        values(:author, :date, :hash, :projectid)''',
+        dict(commit.__dict__, projectid=projectid))
+      return self.cursor.lastrowid, True
+    except sqlite3.IntegrityError:
+      id = self.cursor.execute('select id from commits where projectid=? and hash=?',
+        (projectid, commit.hash)).fetchone()[0]
+      return id, False
+
+  def addFileChange(self, commitid, fileChange):
+    try:
+      self.cursor.execute('''
+        insert into files(file, commitid, changetype, added, deleted, isbinary)
+        values(:filename, :commitid, :changeType, :addedLines, :deletedLines, :isBinary)''',
+        dict(fileChange.__dict__, commitid=commitid))
+      return self.cursor.lastrowid, True
+    except sqlite3.IntegrityError:
+      id = self.cursor.execute('select id from files where commitid=? and file=?',
+        (commitid, fileChange.filename)).fetchone()[0]
+      return id, False
     
   def importLog(self, mirror):
     "Import logs of a repoMirror into this store"

@@ -23,9 +23,8 @@ class Commit:
 
 class FileChange:
   "Info about how a file was changed"
-  def __init__(self, filename, commitHash, changeType, addedLines, deletedLines, isBinary):
+  def __init__(self, filename, changeType, addedLines, deletedLines, isBinary):
     self.filename = unicode(filename, errors='replace')
-    self.commitHash = commitHash
     self.changeType = changeType
     self.addedLines = addedLines
     self.deletedLines = deletedLines
@@ -107,4 +106,4 @@ class HgMirror:
     node1 = repo[node2].parents()[0].node()
     lines = util.iterlines(patch.diff(repo, node1, node2))
     for f in patch.diffstatdata(lines):
-      yield FileChange(f[0], commit.hash, commit.fileChanges[f[0]], f[1], f[2], f[3])
+      yield FileChange(f[0], commit.fileChanges[f[0]], f[1], f[2], f[3])

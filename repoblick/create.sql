@@ -8,14 +8,19 @@ create table if not exists hosts (
 create table if not exists projects (
   id integer primary key autoincrement,
   hostid integer,
-  project text,
-  commits integer,
-  watchers integer,
-  forks integer,
-  language text,
+  name text,
   status text,
   foreign key(hostid) references hosts(id),
-  unique(hostid, project)
+  unique(hostid, name)
+);
+
+create table if not exists projectattrs (
+  id integer primary key autoincrement,
+  projectid integer,
+  key text,
+  value text,
+  foreign key(projectid) references projects(id),
+  unique(projectid, key)
 );
 
 create table if not exists commits (
