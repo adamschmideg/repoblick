@@ -1,7 +1,7 @@
 """
 Store repodata in a persistent format, like a database or csv files
 """
-import sqlite3, time
+import os, sqlite3, time
 from utils import Timer, fileSize
 
 class SqliteStore:
@@ -9,45 +9,9 @@ class SqliteStore:
   def __init__(self, path):
     self.path = path
     self.cursor = sqlite3.connect(path).cursor()
-    tables = (
-      '''
-      projects (
-        id integer primary key autoincrement,
-        project text,
-        host text,
-        commits integer,
-        watchers integer,
-        forks integer,
-        language text,
-        cloned integer
-      )''',
-      '''
-      commits (
-        id integer primary key autoincrement,
-        author text,
-        date timestamp,
-        hash text,
-        message text,
-        projectid integer,
-        foreign key(projectid) references projects(id)
-      )''',
-      '''
-      files (
-        id integer primary key autoincrement,
-        commitid integer,
-        changetype char(1),
-        added integer,
-        deleted integer,
-        file text,
-        isbinary boolean,
-        foreign key(commitid) references commits(id)
-      )''',
-    )
-    for t in tables:
-      try:
-        self.cursor.execute('create table if not exists %s;' % t)
-      except sqlite3.OperationalError, e:
-        print e, t
+    createScript = os.path.join(os.path.dirname(__file__), 'create.sql')
+    with open(createScript) as script:
+      self.cursor.executescript(script.read())
       
   def project(self, mirror):
     self.cursor.execute('''
