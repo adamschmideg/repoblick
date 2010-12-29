@@ -68,24 +68,14 @@ class SqliteStore:
         (commitid, fileChange.filename)).fetchone()[0]
       return id, False
     
-  def importLog(self, mirror):
+  def importLog(self, projectid, mirror):
     "Import logs of a repoMirror into this store"
-    with Timer('Import %s' % mirror.project):
-      try:
-        projectid = self.project(mirror)
-      except sqlite3.IntegrityError:
-        # project already exists, delete its logs
-        self.cursor.execute('''
-          delete from files where commithash in
-            (select hash from commits where project=?)''',
-          (mirror.project,))
-        self.cursor.execute('delete from commits where project=?',
-          (mirror.project,))
+    with Timer('Import %s' % mirror.remoteRepo):
       try:
         for commit in mirror.commits():
-          commitid = self.commit(projectid, commit)
+          commitid, _ = self.addCommit(projectid, commit)
           for fileChange in mirror.changes(commit):
-            self.file(commitid, fileChange)
+            self.addFileChange(commitid, fileChange)
         self.cursor.connection.commit()
       except:
         self.cursor.connection.rollback()

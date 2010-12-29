@@ -3,13 +3,13 @@ from subprocess import Popen, PIPE
 from urllib2 import urlopen
 import os, re
 from lxml import html
-from utils import Timer, makeInt
+from repoblick.utils import Timer, makeInt
 
 class LocalLister:
   """List repos located in local file system, used mainly for testing."""
 
-  def __init__(self, urnPattern):
-    self.urnPattern = urnPattern
+  def __init__(self, path):
+    self.urnPattern = path + '/%s'
     self.name = 'local'
 
   def listRepos(self, startPage, pages):
@@ -17,8 +17,17 @@ class LocalLister:
       if os.path.isdir(dir):
         yield dir
 
+  def isLocal(self):
+    return True
 
-class BitbucketWeb:
+
+
+class RemoteLister:
+  def isLocal(self):
+    return False
+
+
+class BitbucketWeb(RemoteLister):
   """List repos reading bitbucket web pages and parsing them"""
 
   def __init__(self):
@@ -49,13 +58,17 @@ KNOWN_HOSTS = {
   'bb': BitbucketWeb,
 }
 
+def getLister(host):
+  """Get a lister for this host"""
+  try:
+    return KNOWN_HOSTS[host]()
+  except KeyError:
+    return LocalLister(host)
+
 def listRepos(host, dbPath=None, startPage=1, pages=1):
   """List repos using lister.  If host is in KNOWN_HOSTS, use the class
   there.  Otherwise handle host as a local path.  If dbPath is None, print them to screen."""
-  try:
-    lister = KNOWN_HOSTS[host]()
-  except KeyError:
-    lister = LocalLister(host)
+  lister = getLister(host)
   if dbPath:
     pass
   else:
