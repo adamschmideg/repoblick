@@ -27,6 +27,7 @@ class SqliteStore:
         author text,
         date timestamp,
         hash text,
+        message text,
         projectid integer,
         foreign key(projectid) references projects(id)
       )''',
@@ -82,9 +83,14 @@ class SqliteStore:
           (mirror.project,))
         self.cursor.execute('delete from commits where project=?',
           (mirror.project,))
-      for commit in mirror.commits():
-        commitid = self.commit(projectid, commit)
-        for fileChange in mirror.changes(commit):
-          self.file(commitid, fileChange)
-      self.cursor.connection.commit()
+      try:
+        for commit in mirror.commits():
+          commitid = self.commit(projectid, commit)
+          for fileChange in mirror.changes(commit):
+            self.file(commitid, fileChange)
+        self.cursor.connection.commit()
+      except:
+        self.cursor.connection.rollback()
+        print 'Failed to import', mirror
+        raise
     print 'Storage used:\t%s' % fileSize(self.path)

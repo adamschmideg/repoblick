@@ -13,15 +13,18 @@ class Commit:
   def __init__(self, hash, date, author, message, fileChanges):
     self.hash = hash
     self.date = date
-    self.author = author
-    self.message = message
+    self.author = unicode(author, errors='replace')
+    self.message = unicode(message, errors='replace')
     self.fileChanges = fileChanges
+
+  def __unicode__(self):
+    return unicode(self.__dict__)
 
 
 class FileChange:
   "Info about how a file was changed"
   def __init__(self, filename, commitHash, changeType, addedLines, deletedLines, isBinary):
-    self.filename = filename
+    self.filename = unicode(filename, errors='replace')
     self.commitHash = commitHash
     self.changeType = changeType
     self.addedLines = addedLines

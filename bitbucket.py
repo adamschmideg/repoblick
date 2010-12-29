@@ -8,9 +8,9 @@ def makeInt(numStr):
   "Make an int from a string with thousands-separator"
   return int(numStr.replace(',', ''))
 
-def listRepos(subpage='all/commits', count=20):
-  for p in range(count / 20):
-    url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p + 1)
+def listRepos(subpage='all/commits', startPage=1, endPage=1):
+  for p in range(startPage, endPage + 1):
+    url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p)
     with Timer('Read %s' % url):
       page = html.parse(urlopen(url))
     projects = page.xpath("/html/body/div/div/ul[@id='repositories']/li/dl")
