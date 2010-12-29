@@ -26,3 +26,8 @@ def fileSize(fileOrSize):
     if size < 1024.0:
       return "%3.1f%s" % (size, x)
     size /= 1024.0
+
+def makeInt(numStr):
+  "Make an int from a string with thousands-separator"
+  return int(numStr.replace(',', ''))
+
