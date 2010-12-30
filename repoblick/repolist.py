@@ -5,19 +5,21 @@ import os, re
 from lxml import html
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick.store import SqliteStore
 from repoblick.utils import Timer, makeInt
 
 class LocalLister:
   """List repos located in local file system, used mainly for testing."""
 
   def __init__(self, path):
+    self.path = path
     self.urnPattern = path + '/%s'
     self.name = 'local'
 
   def listRepos(self, startPage, pages):
-    for dir in os.listdir(self.urnPattern):
-      if os.path.isdir(dir):
-        yield dir
+    for dir in os.listdir(self.path):
+      if os.path.isdir(os.path.join(self.path, dir, '.hg')):
+        yield dir, {}
 
   def isLocal(self):
     return True
@@ -51,7 +53,7 @@ class BitbucketWeb(RemoteLister):
           schema, _, domain, user, project, _ = link.split('/')
         else:
           _, user, project, _ = link.split('/')
-        yield (user, project, commits, followers, forks)
+        yield '%s/%s' % (user, project), dict(commits=commits, watchers=followers, forks=forks)
 
 
 KNOWN_HOSTS = {
@@ -71,7 +73,12 @@ def listRepos(host, dbPath=None, startPage=1, pages=1):
   there.  Otherwise handle host as a local path.  If dbPath is None, print them to screen."""
   lister = getLister(host)
   if dbPath:
-    pass
+    with Timer('List repos at %s' % host):
+      store = SqliteStore(dbPath)
+      hostid, _ = store.addHost(lister.name, lister.urnPattern)
+      for repo in lister.listRepos(startPage, pages):
+        store.addProject(hostid, repo[0], repo[1])
+      store.commit()
   else:
     print lister.name, lister.urnPattern
     for repo in lister.listRepos(startPage, pages):

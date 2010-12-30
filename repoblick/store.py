@@ -92,3 +92,6 @@ class SqliteStore:
         print 'Failed to import', mirror
         raise
     print 'Storage used:\t%s' % fileSize(self.path)
+
+  def commit(self):
+    self.cursor.connection.commit()
