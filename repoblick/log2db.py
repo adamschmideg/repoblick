@@ -113,10 +113,21 @@ def log2db(storeOrPath, host, project, commits=2, workingDir='mirror'):
   mirror.mirror(commits)
   store.importLog(projectid, mirror)
 
-def repos2db(storeOrPath, workingDir='mirror'):
+def repos2db(storeOrPath, commits=2, workingDir='mirror'):
   """Read repos from database and put their logs back into the same
   database.  Remote repos are cloned into workingDir."""
   store = SqliteStore(storeOrPath) if type(storeOrPath) == str else storeOrPath
+  with Timer('repos2db for %s' % storeOrPath):
+    for prj in store.getActiveProjects():
+      project = prj['project']
+      remoteRepo = prj['urnPattern'] % project
+      if remoteRepo.startswith('http://') or remoteRepo.startswith('https://') or remoteRepo.startswith('ssh://'):
+        localRepo = os.path.join(workingDir, project)
+      else:
+        localRepo = remoteRepo
+      mirror = HgMirror(remoteRepo, localRepo)
+      mirror.mirror(commits)
+      store.importLog(prj['projectid'], mirror)
 
 def main():
   parser = OptionParser(usage='usage: %prog [options] <dbpath>')

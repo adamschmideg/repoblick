@@ -3,6 +3,8 @@ from subprocess import Popen, PIPE
 from urllib2 import urlopen
 import os, re
 from lxml import html
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick.utils import Timer, makeInt
 
 class LocalLister:
@@ -19,7 +21,6 @@ class LocalLister:
 
   def isLocal(self):
     return True
-
 
 
 class RemoteLister:

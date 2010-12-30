@@ -2,13 +2,17 @@
 Store repodata in a persistent format, like a database or csv files
 """
 import os, sqlite3, time
-from utils import Timer, fileSize
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick.utils import Timer, fileSize
 
 class SqliteStore:
 
   def __init__(self, path):
     self.path = path
-    self.cursor = sqlite3.connect(path).cursor()
+    con = sqlite3.connect(path)
+    con.row_factory = sqlite3.Row
+    self.cursor = con.cursor()
     createScript = os.path.join(os.path.dirname(__file__), 'create.sql')
     with open(createScript) as script:
       self.cursor.executescript(script.read())
@@ -67,6 +71,12 @@ class SqliteStore:
       id = self.cursor.execute('select id from files where commitid=? and file=?',
         (commitid, fileChange.filename)).fetchone()[0]
       return id, False
+    
+  def getActiveProjects(self):
+    return self.cursor.execute('''
+      select h.urnpattern, p.name as project, p.id as projectid
+      from hosts h, projects p
+      where p.status is null''').fetchall()
     
   def importLog(self, projectid, mirror):
     "Import logs of a repoMirror into this store"
