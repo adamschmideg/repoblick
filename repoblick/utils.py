@@ -31,3 +31,6 @@ def makeInt(numStr):
   "Make an int from a string with thousands-separator"
   return int(numStr.replace(',', ''))
 
+def relative_file(file, path):
+  """Get a path relative to file"""
+  return os.path.join(os.path.dirname(file), path)

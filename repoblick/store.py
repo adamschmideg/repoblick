@@ -4,7 +4,7 @@ Store repodata in a persistent format, like a database or csv files
 import os, sqlite3, time
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from repoblick.utils import Timer, fileSize
+from repoblick.utils import Timer, fileSize, relative_file
 
 class SqliteStore:
 
@@ -13,8 +13,8 @@ class SqliteStore:
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
     self.cursor = con.cursor()
-    createScript = os.path.join(os.path.dirname(__file__), 'create.sql')
-    with open(createScript) as script:
+    create_script = relative_file(__file__, 'create.sql')
+    with open(create_script) as script:
       self.cursor.executescript(script.read())
       
   def addHost(self, hostName, urnPattern):
