@@ -13,18 +13,18 @@ def first_commits(dbpath):
   script = relative_file(__file__, 'stat.sql')
   with open(script) as query:
     store.cursor.executescript(query.read())
-  store.cursor.execute('''
-    select projectid, date(date), author, rank, ncommits, round(days) as days, lines, files
-    from joininfo
-    order by projectid, rank''', [])
-  lines = []
-  rank = []
-  for rec in store.cursor:
-    lines.append(rec['lines'])
-    rank.append(rec['rank'])
+  store.cursor.execute('select days from joininfo order by days')
+  days = [x[0] for x in store.cursor]
+  store.cursor.execute('select ncommits from joininfo order by ncommits')
+  ncommits = [x[0] for x in store.cursor]
+  store.cursor.execute('select lines/100 as lines from joininfo order by lines')
+  lines = [x[0] for x in store.cursor]
   fig = plt.figure()
   subplot = fig.add_subplot(111)
-  subplot.plot(rank, lines, 'o')
+  subplot.plot(days, label='days')
+  subplot.plot(ncommits, label='ncommits')
+  subplot.plot(lines, label='1k lines')
+  subplot.legend()
   fig.savefig('/tmp/plot.png')
 
 
