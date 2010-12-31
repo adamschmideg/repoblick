@@ -25,6 +25,25 @@ def first_commits(dbpath):
         from rawfirstcommits r
         where r.projectid=f.projectid and r.date<f.date) as rank
       from rawfirstcommits f;
+
+    create temp view if not exists changes as
+      select f1.commitid, f1.lines, f2.addfiles, f3.delfiles
+      from
+        (select commitid, sum(added)-sum(deleted) as lines
+        from files
+        group by commitid) as f1
+        left join 
+          (select commitid, count(*) as addfiles
+          from files
+          where changetype='A'
+          group by commitid) as f2
+          on f1.commitid = f2.commitid
+          left join 
+            (select commitid, count(*) as delfiles
+            from files
+            where changetype='D'
+            group by commitid) as f3
+            on f1.commitid = f3.commitid;
     '''
   store.cursor.executescript(query)
   store.cursor.execute('select * from firstcommits order by projectid, rank', [])
