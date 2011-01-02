@@ -6,27 +6,27 @@ from lxml import html
 import sys
 
 from store import SqliteStore
-from utils import Timer, makeInt
+from utils import Timer, make_int
 
 class LocalLister:
     """List repos located in local file system, used mainly for testing."""
 
     def __init__(self, path):
         self.path = path
-        self.urnPattern = path + '/%s'
+        self.urn_pattern = path + '/%s'
         self.name = path.replace(os.path.sep, '-')[1:]
 
-    def listRepos(self, startPage, pages):
+    def list_repos(self, start_page, pages):
         for dir in os.listdir(self.path):
             if os.path.isdir(os.path.join(self.path, dir, '.hg')):
                 yield dir, {}
 
-    def isLocal(self):
+    def is_local(self):
         return True
 
 
 class RemoteLister:
-    def isLocal(self):
+    def is_local(self):
         return False
 
 
@@ -34,20 +34,20 @@ class BitbucketWeb(RemoteLister):
     """List repos reading bitbucket web pages and parsing them"""
 
     def __init__(self):
-        self.urnPattern = 'https://bitbucket.org/%s'
+        self.urn_pattern = 'https://bitbucket.org/%s'
         self.name = 'bitbucket'
         
-    def listRepos(self, startPage, pages):
+    def list_repos(self, start_page, pages):
         subpage='all/commits'
-        for p in range(startPage, startPage + pages):
+        for p in range(start_page, start_page + pages):
             url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p)
             with Timer('Read %s' % url):
                 page = html.parse(urlopen(url))
             projects = page.xpath("/html/body/div/div/ul[@id='repositories']/li/dl")
             for prj in projects:
-                commits = makeInt(prj.xpath("dd[@class='commits']/div/span[1]/a/text()")[0])
-                followers = makeInt(prj.xpath("dd[@class='followers']/div/span[1]/a/text()")[0])
-                forks = makeInt(prj.xpath("dd[@class='forks']/div/span[1]/a/text()")[0])
+                commits = make_int(prj.xpath("dd[@class='commits']/div/span[1]/a/text()")[0])
+                followers = make_int(prj.xpath("dd[@class='followers']/div/span[1]/a/text()")[0])
+                forks = make_int(prj.xpath("dd[@class='forks']/div/span[1]/a/text()")[0])
                 link = prj.xpath("dd[@class='name']/a[2]/@href")[0]
                 if link.startswith('http'):
                     schema, _, domain, user, project, _ = link.split('/')
@@ -75,7 +75,7 @@ KNOWN_HOSTS = {
         vcs='git', urnpattern='https://github.com/%.git'),
 }
 
-def getLister(host):
+def get_lister(host):
     """Get a lister for this host"""
     try:
         return KNOWN_HOSTS[host]()
@@ -85,15 +85,15 @@ def getLister(host):
 def list_repos(host, db=None, start_page=1, pages=1):
     """List repos using lister.  If host is in KNOWN_HOSTS, use the class
     there.  Otherwise handle host as a local path.  If db_path is None, print them to screen."""
-    lister = getLister(host)
+    lister = get_lister(host)
     if db:
         with Timer('List repos at %s' % host):
             store = SqliteStore(db)
-            hostid, _ = store.addHost(lister.name, lister.urnPattern)
-            for repo in lister.listRepos(start_page, pages):
-                store.addProject(hostid, repo[0], repo[1])
+            hostid, _ = store.add_host(lister.name, lister.urn_pattern)
+            for repo in lister.list_repos(start_page, pages):
+                store.add_project(hostid, repo[0], repo[1])
             store.commit()
     else:
-        print lister.name, lister.urnPattern
-        for repo in lister.listRepos(start_page, pages):
+        print lister.name, lister.urn_pattern
+        for repo in lister.list_repos(start_page, pages):
             print repo

@@ -18,18 +18,18 @@ class Timer:
         end = time.time()
         print("%s:\t%0.11s" % (self.name, timedelta(seconds=elapsed)))
 
-def fileSize(fileOrSize):
+def file_size(file_or_size):
     """Human readable format of file size"""
-    if type(fileOrSize) == str:
-        size = os.stat(fileOrSize).st_size
+    if type(file_or_size) == str:
+        size = os.stat(file_or_size).st_size
     for x in ['bytes','KB','MB','GB','TB']:
         if size < 1024.0:
             return "%3.1f%s" % (size, x)
         size /= 1024.0
 
-def makeInt(numStr):
+def make_int(num_str):
     "Make an int from a string with thousands-separator"
-    return int(numStr.replace(',', ''))
+    return int(num_str.replace(',', ''))
 
 def relative_file(file, path):
     """Get a path relative to file"""

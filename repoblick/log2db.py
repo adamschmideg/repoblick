@@ -15,12 +15,12 @@ DEL = 'D'
 
 class Commit:
     "Info for one changeset"
-    def __init__(self, hash, date, author, message, fileChanges):
+    def __init__(self, hash, date, author, message, file_changes):
         self.hash = hash
         self.date = date
         self.author = unicode(author, errors='replace')
         self.message = unicode(message, errors='replace')
-        self.fileChanges = fileChanges
+        self.file_changes = file_changes
 
     def __unicode__(self):
         return unicode(self.__dict__)
@@ -28,42 +28,42 @@ class Commit:
 
 class FileChange:
     "Info about how a file was changed"
-    def __init__(self, filename, changeType, addedLines, deletedLines, isBinary):
+    def __init__(self, filename, change_type, added_lines, deleted_lines, is_binary):
         self.filename = unicode(filename, errors='replace')
-        self.changeType = changeType
-        self.addedLines = addedLines
-        self.deletedLines = deletedLines
-        self.isBinary = isBinary
+        self.change_type = change_type
+        self.added_lines = added_lines
+        self.deleted_lines = deleted_lines
+        self.is_binary = is_binary
 
 
 class HgMirror:
     "Local mirror of a remote hg repo"
 
-    def __init__(self, remoteRepo, localRepo):
-        self.remoteRepo = remoteRepo
-        self.localRepo = localRepo
+    def __init__(self, remote_repo, local_repo):
+        self.remote_repo = remote_repo
+        self.local_repo = local_repo
         # for performance reasons
         self.ui = ui.ui()
 
     def __str__(self):
-        return 'HgMirror(remoteRepo=%s, localRepo=%s)' % (self.remoteRepo, self.localRepo)
+        return 'HgMirror(remote_repo=%s, local_repo=%s)' % (self.remote_repo, self.local_repo)
 
     def mirror(self, count=2):
         "Mirror count number of commits from remote to local"
-        if self.remoteRepo != self.localRepo:
-            with Timer('Mirror %s' % self.remoteRepo):
+        if self.remote_repo != self.local_repo:
+            with Timer('Mirror %s' % self.remote_repo):
                 devnull = open(os.devnull, 'w')
-                if os.path.exists(self.localRepo):
+                if os.path.exists(self.local_repo):
                     if count:
-                        p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.localRepo], stdout=devnull)
+                        p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.local_repo], stdout=devnull)
                     else:
-                        p = Popen(['hg', 'pull', '-R', self.localRepo], stdout=devnull)
+                        p = Popen(['hg', 'pull', '-R', self.local_repo], stdout=devnull)
                 else:
-                    os.makedirs(self.localRepo)
+                    os.makedirs(self.local_repo)
                     if count:
-                        p = Popen(['hg', 'clone', '-r', str(count - 1), self.remoteRepo, self.localRepo], stdout=devnull)
+                        p = Popen(['hg', 'clone', '-r', str(count - 1), self.remote_repo, self.local_repo], stdout=devnull)
                     else:
-                        p = Popen(['hg', 'clone', self.remoteRepo, self.localRepo], stdout=devnull)
+                        p = Popen(['hg', 'clone', self.remote_repo, self.local_repo], stdout=devnull)
                 p.wait()
                 devnull.close()
 
@@ -71,8 +71,8 @@ class HgMirror:
         """Return Commit instances"""
         dir = os.path.dirname(__file__)
         style = os.path.join(dir, '..', 'hg/style')
-        p = Popen(['hg', 'log', '-R', self.localRepo, '--style', style], stdout=PIPE)
-        def fileSplit(line):
+        p = Popen(['hg', 'log', '-R', self.local_repo, '--style', style], stdout=PIPE)
+        def file_split(line):
             if line:
                 return line.split(';')
             else:
@@ -83,68 +83,68 @@ class HgMirror:
             ts, offset = [int(d) for d in date.split(' ')]
             date = datetime.fromtimestamp(ts) + timedelta(seconds=offset)
             files = {}
-            for f in fileSplit(files_add):
+            for f in file_split(files_add):
                 files[f] = ADD
-            for f in fileSplit(files_mod):
+            for f in file_split(files_mod):
                 files[f] = MOD
-            for f in fileSplit(files_del):
+            for f in file_split(files_del):
                 files[f] = DEL
             yield Commit(hash, date, author, message, files)
 
     def changes(self, commit):
         "Return FileChange instances"
-        repo = hg.repository(self.ui, path=self.localRepo)
+        repo = hg.repository(self.ui, path=self.local_repo)
         node2 = repo.lookup(commit.hash)
         node1 = repo[node2].parents()[0].node()
         lines = util.iterlines(patch.diff(repo, node1, node2))
         for f in patch.diffstatdata(lines):
-            yield FileChange(f[0], commit.fileChanges[f[0]], f[1], f[2], f[3])
+            yield FileChange(f[0], commit.file_changes[f[0]], f[1], f[2], f[3])
 
 
-def log2db(storeOrPath, host, project, commits=2, workingDir='mirror'):
+def log2db(store_or_path, host, project, commits=2, working_dir='mirror'):
     """Make log-related entries in the database for a single project"""
-    lister = repolist.getLister(host)
-    store = SqliteStore(storeOrPath) if type(storeOrPath) == str else storeOrPath
-    hostid, _ = store.addHost(lister.name, lister.urnPattern)
-    projectid, _ = store.addProject(hostid, project)
-    remoteRepo = lister.urnPattern % project
-    localRepo = remoteRepo if lister.isLocal() else os.path.join(workingDir, project)
-    mirror = HgMirror(remoteRepo, localRepo)
+    lister = repolist.get_lister(host)
+    store = SqliteStore(store_or_path) if type(store_or_path) == str else store_or_path
+    hostid, _ = store.add_host(lister.name, lister.urn_pattern)
+    projectid, _ = store.add_project(hostid, project)
+    remote_repo = lister.urn_pattern % project
+    local_repo = remote_repo if lister.is_local() else os.path.join(working_dir, project)
+    mirror = HgMirror(remote_repo, local_repo)
     mirror.mirror(commits)
-    store.importLog(projectid, mirror)
+    store.import_log(projectid, mirror)
 
-def repos2db(storeOrPath, commits=2, workingDir='mirror'):
+def repos2db(store_or_path, commits=2, working_dir='mirror'):
     """Read repos from database and put their logs back into the same
-    database.  Remote repos are cloned into workingDir."""
-    store = SqliteStore(storeOrPath) if type(storeOrPath) == str else storeOrPath
-    with Timer('repos2db for %s' % storeOrPath):
-        for prj in store.getActiveProjects():
+    database.  Remote repos are cloned into working_dir."""
+    store = SqliteStore(store_or_path) if type(store_or_path) == str else store_or_path
+    with Timer('repos2db for %s' % store_or_path):
+        for prj in store.get_active_projects():
             project = prj['project']
-            remoteRepo = prj['urnPattern'] % project
-            if remoteRepo.startswith('http://') or remoteRepo.startswith('https://') or remoteRepo.startswith('ssh://'):
-                localRepo = os.path.join(workingDir, project)
+            remote_repo = prj['urn_pattern'] % project
+            if remote_repo.startswith('http://') or remote_repo.startswith('https://') or remote_repo.startswith('ssh://'):
+                local_repo = os.path.join(working_dir, project)
             else:
-                localRepo = remoteRepo
-            mirror = HgMirror(remoteRepo, localRepo)
+                local_repo = remote_repo
+            mirror = HgMirror(remote_repo, local_repo)
             mirror.mirror(commits)
-            store.importLog(prj['projectid'], mirror)
+            store.import_log(prj['projectid'], mirror)
 
 def main():
     parser = OptionParser(usage='usage: %prog [options] <dbpath>')
     parser.add_option('-t', '--host', dest='host')
     parser.add_option('-p', '--project', dest='project')
-    parser.add_option('-c', '--commits', dest='commitCount', default=2)
-    parser.add_option('-m', '--mirror', dest='workingDir', default=2)
+    parser.add_option('-c', '--commits', dest='commit_count', default=2)
+    parser.add_option('-m', '--mirror', dest='working_dir', default=2)
     (options, args) = parser.parse_args()
     if (len(args) < 1):
         print 'Missing arguments.  Use --help for details'
     else:
-        dbPath = args[0]
+        db_path = args[0]
         if options.host and options.project:
-            log2db(dbPath, options.host, options.project,
-                options.commitCount, options.workingDir)
+            log2db(db_path, options.host, options.project,
+                options.commit_count, options.working_dir)
         elif not options.host and not options.project:
-            repos2db(dbPath, options.workingDir)
+            repos2db(db_path, options.working_dir)
         else:
             print 'Give either both host and project, or none of them'
 
