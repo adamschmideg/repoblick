@@ -45,6 +45,10 @@ def plot_command(args):
     "Make a plot of log data"
     print 'Not implemented yet', args
 
+def splot_command(args):
+    "Make a plot of a single project using SVNPlot"
+    print 'Not implemented yet', args
+
 def add_host_arg(parser):
     """Add an argument to parser, include a help text with know hosts"""
     parser.add_argument('host',
@@ -88,6 +92,18 @@ def main():
     add_host_arg(plot_parser)
     add_project_arg(plot_parser)
     plot_parser.set_defaults(func=plot_command)
+
+    splot_parser = subparsers.add_parser('splot',
+        help=splot_command.__doc__)
+    splot_parser.add_argument('-g', '--graph-dir',
+        help='Where to generate graphs (default: %(default)s)',
+        default='/tmp/graph')
+    splot_parser.add_argument('-s', '--svnplot-db',
+        help='Location of svnplot-specific database to be generated (default: %(default)s)',
+        default='/tmp/svnplot.sqlite')
+    add_host_arg(splot_parser)
+    add_project_arg(splot_parser)
+    splot_parser.set_defaults(func=splot_command)
 
     args = parser.parse_args()
     args.func(args)
