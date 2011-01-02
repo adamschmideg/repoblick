@@ -3,8 +3,8 @@ Store repodata in a persistent format, like a database or csv files
 """
 import os, sqlite3, time
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from repoblick.utils import Timer, fileSize, relative_file
+
+from utils import Timer, fileSize, relative_file
 
 class SqliteStore:
 

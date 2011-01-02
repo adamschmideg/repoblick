@@ -4,9 +4,9 @@ from urllib2 import urlopen
 import os, re
 from lxml import html
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from repoblick.store import SqliteStore
-from repoblick.utils import Timer, makeInt
+
+from store import SqliteStore
+from utils import Timer, makeInt
 
 class LocalLister:
   """List repos located in local file system, used mainly for testing."""
@@ -14,7 +14,7 @@ class LocalLister:
   def __init__(self, path):
     self.path = path
     self.urnPattern = path + '/%s'
-    self.name = 'local'
+    self.name = path.replace(os.path.sep, '-')[1:]
 
   def listRepos(self, startPage, pages):
     for dir in os.listdir(self.path):
@@ -57,8 +57,22 @@ class BitbucketWeb(RemoteLister):
 
 
 KNOWN_HOSTS = {
-  'bitbucket': BitbucketWeb,
-  'bb': BitbucketWeb,
+  'bitbucket': dict(name='bitbucket', lister=BitbucketWeb, vcs='hg',
+      urnpattern='https://bitbucket.org/%s'),
+  'bb': dict(name='bitbucket', lister=BitbucketWeb, vcs='hg',
+      urnpattern='https://bitbucket.org/%s'),
+  'googlecode-mercurial': dict(name='googlecode-mercurial', lister=None,
+      vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
+  'gc-hg': dict(name='googlecode-mercurial', lister=None,
+      vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
+  'googlecode-subversion': dict(name='googlecode-subversion', lister=None,
+      vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
+  'gc-svn': dict(name='googlecode-subversion', lister=None,
+      vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
+  'github': dict(name='github', lister=None,
+      vcs='git', urnpattern='https://github.com/%.git'),
+  'gh': dict(name='github', lister=None,
+      vcs='git', urnpattern='https://github.com/%.git'),
 }
 
 def getLister(host):
@@ -68,36 +82,18 @@ def getLister(host):
   except KeyError:
     return LocalLister(host)
 
-def listRepos(host, dbPath=None, startPage=1, pages=1):
+def list_repos(host, db=None, start_page=1, pages=1):
   """List repos using lister.  If host is in KNOWN_HOSTS, use the class
-  there.  Otherwise handle host as a local path.  If dbPath is None, print them to screen."""
+  there.  Otherwise handle host as a local path.  If db_path is None, print them to screen."""
   lister = getLister(host)
-  if dbPath:
+  if db:
     with Timer('List repos at %s' % host):
-      store = SqliteStore(dbPath)
+      store = SqliteStore(db)
       hostid, _ = store.addHost(lister.name, lister.urnPattern)
-      for repo in lister.listRepos(startPage, pages):
+      for repo in lister.listRepos(start_page, pages):
         store.addProject(hostid, repo[0], repo[1])
       store.commit()
   else:
     print lister.name, lister.urnPattern
-    for repo in lister.listRepos(startPage, pages):
+    for repo in lister.listRepos(start_page, pages):
       print repo
-
-def main():
-  parser = OptionParser(usage='usage: %prog [options] <host>',
-    description='<host> is either a local path, or any of %s' % ','.join(KNOWN_HOSTS.keys()))
-  parser.add_option('-d', '--dbpath', dest='dbPath',
-    help='If not given, print repos on stdout')
-  parser.add_option('-s', '--start', dest='startPage', default=1)
-  parser.add_option('-p', '--pages', dest='pages', default=1)
-  (options, args) = parser.parse_args()
-  if (len(args) < 1):
-    print 'Missing arguments.  Use --help for details'
-  else:
-    listRepos(args[0], dbPath=options.dbPath,
-      startPage=options.startPage, pages=options.pages)
-
-
-if __name__ == '__main__':
-  main()
