@@ -3,28 +3,27 @@ A command line interface to the full repoblick functionality
 """
 import argparse
 import os
-import sys
 
 import repolist
 
-def init_dir(dir):
+def init_dir(dirname):
     "Create working directory if it doesn't exist"
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
 
 def get_host_info(host, project=None):
     """Get host info if it can be found in KNOWN_HOSTS,
     or try to split `host` into meaningful chunks"""
     try:
-        info = KNOWN_HOSTS[host].copy()
+        info = repolist.KNOWN_HOSTS[host].copy()
         info['project'] = project
     except KeyError:
         if host.startswith('http://') or host.startswith('https://'):
             raise ValueError('Remote host %s not supported' % host)
-        dir, file = os.path.split(host)
-        info = dict(name=dir.replace(os.path.sep, '-'),
+        dirname, fname = os.path.split(host)
+        info = dict(name=dirname.replace(os.path.sep, '-'),
             urnpattern='dir/%s', lister=repolist.LocalLister)
-        info['project'] = project or file
+        info['project'] = project or fname
     return info
 
 def list_command(args):
@@ -36,15 +35,15 @@ def list_command(args):
 
 def mirror_command(args):
     "Make a local mirror of repositories for later processing"
-    pass
+    print 'Not implemented yet', args
 
 def log2db_command(args):
     "Process logs of repositories"
-    pass
+    print 'Not implemented yet', args
 
 def plot_command(args):
     "Make a plot of log data"
-    pass
+    print 'Not implemented yet', args
 
 def add_host_arg(parser):
     """Add an argument to parser, include a help text with know hosts"""

@@ -1,8 +1,7 @@
 """
 Store repodata in a persistent format, like a database or csv files
 """
-import os, sqlite3, time
-import sys
+import sqlite3
 
 from utils import Timer, file_size, relative_file
 
@@ -25,9 +24,9 @@ class SqliteStore:
                 (host_name, urn_pattern))
             return self.cursor.lastrowid, True
         except sqlite3.IntegrityError:
-            id = self.cursor.execute('select id from hosts where name=? and urnpattern=?', 
+            hostid = self.cursor.execute('select id from hosts where name=? and urnpattern=?', 
                 (host_name, urn_pattern)).fetchone()[0]
-            return id, False
+            return hostid, False
 
     def add_project(self, hostid, name, attrs=None):
         try:
@@ -35,18 +34,18 @@ class SqliteStore:
                 insert into projects (hostid, name)
                 values(?, ?)''',
                 (hostid, name))
-            id = self.cursor.lastrowid
+            projectid = self.cursor.lastrowid
             if attrs:
                 for k, v in attrs.items():
                     self.cursor.execute('''
                     insert into projectattrs (projectid, key, value)
                     values(?, ?, ?)''',
                     (id, k, v))
-            return id, True
+            return projectid, True
         except sqlite3.IntegrityError:
-            id = self.cursor.execute('select id from projects where hostid=? and name=?',
+            projectid = self.cursor.execute('select id from projects where hostid=? and name=?',
                 (hostid, name)).fetchone()[0]
-            return id, False
+            return projectid, False
 
     def add_commit(self, projectid, commit):
         try:
@@ -56,9 +55,9 @@ class SqliteStore:
                 dict(commit.__dict__, projectid=projectid))
             return self.cursor.lastrowid, True
         except sqlite3.IntegrityError:
-            id = self.cursor.execute('select id from commits where projectid=? and hash=?',
+            commitid = self.cursor.execute('select id from commits where projectid=? and hash=?',
                 (projectid, commit.hash)).fetchone()[0]
-            return id, False
+            return commitid, False
 
     def add_file_change(self, commitid, file_change):
         try:
@@ -68,9 +67,9 @@ class SqliteStore:
                 dict(file_change.__dict__, commitid=commitid))
             return self.cursor.lastrowid, True
         except sqlite3.IntegrityError:
-            id = self.cursor.execute('select id from files where commitid=? and file=?',
+            filechangeid = self.cursor.execute('select id from files where commitid=? and file=?',
                 (commitid, file_change.filename)).fetchone()[0]
-            return id, False
+            return filechangeid, False
         
     def get_active_projects(self):
         return self.cursor.execute('''

@@ -15,8 +15,8 @@ DEL = 'D'
 
 class Commit:
     "Info for one changeset"
-    def __init__(self, hash, date, author, message, file_changes):
-        self.hash = hash
+    def __init__(self, hash_, date, author, message, file_changes):
+        self.hash = hash_
         self.date = date
         self.author = unicode(author, errors='replace')
         self.message = unicode(message, errors='replace')
@@ -55,33 +55,33 @@ class HgMirror:
                 devnull = open(os.devnull, 'w')
                 if os.path.exists(self.local_repo):
                     if count:
-                        p = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.local_repo], stdout=devnull)
+                        proc = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.local_repo], stdout=devnull)
                     else:
-                        p = Popen(['hg', 'pull', '-R', self.local_repo], stdout=devnull)
+                        proc = Popen(['hg', 'pull', '-R', self.local_repo], stdout=devnull)
                 else:
                     os.makedirs(self.local_repo)
                     if count:
-                        p = Popen(['hg', 'clone', '-r', str(count - 1), self.remote_repo, self.local_repo], stdout=devnull)
+                        proc = Popen(['hg', 'clone', '-r', str(count - 1), self.remote_repo, self.local_repo], stdout=devnull)
                     else:
-                        p = Popen(['hg', 'clone', self.remote_repo, self.local_repo], stdout=devnull)
-                p.wait()
+                        proc = Popen(['hg', 'clone', self.remote_repo, self.local_repo], stdout=devnull)
+                proc.wait()
                 devnull.close()
 
     def commits(self):
         """Return Commit instances"""
-        dir = os.path.dirname(__file__)
-        style = os.path.join(dir, '..', 'hg/style')
-        p = Popen(['hg', 'log', '-R', self.local_repo, '--style', style], stdout=PIPE)
+        dir_ = os.path.dirname(__file__)
+        style = os.path.join(dir_, '..', 'hg/style')
+        proc = Popen(['hg', 'log', '-R', self.local_repo, '--style', style], stdout=PIPE)
         def file_split(line):
             if line:
                 return line.split(';')
             else:
                 return ()
-        for line in p.stdout.readlines():
+        for line in proc.stdout.readlines():
             line = line.rstrip()
-            hash, date, author, message, files_add, files_mod, files_del = line.split('|')
-            ts, offset = [int(d) for d in date.split(' ')]
-            date = datetime.fromtimestamp(ts) + timedelta(seconds=offset)
+            hash_, date, author, message, files_add, files_mod, files_del = line.split('|')
+            timestamp, offset = [int(d) for d in date.split(' ')]
+            date = datetime.fromtimestamp(timestamp) + timedelta(seconds=offset)
             files = {}
             for f in file_split(files_add):
                 files[f] = ADD
@@ -89,7 +89,7 @@ class HgMirror:
                 files[f] = MOD
             for f in file_split(files_del):
                 files[f] = DEL
-            yield Commit(hash, date, author, message, files)
+            yield Commit(hash_, date, author, message, files)
 
     def changes(self, commit):
         "Return FileChange instances"

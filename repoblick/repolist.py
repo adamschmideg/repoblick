@@ -1,9 +1,7 @@
-from optparse import OptionParser
-from subprocess import Popen, PIPE
 from urllib2 import urlopen
-import os, re
+import os
+
 from lxml import html
-import sys
 
 from store import SqliteStore
 from utils import Timer, make_int
@@ -17,9 +15,12 @@ class LocalLister:
         self.name = path.replace(os.path.sep, '-')[1:]
 
     def list_repos(self, start_page, pages):
-        for dir in os.listdir(self.path):
-            if os.path.isdir(os.path.join(self.path, dir, '.hg')):
-                yield dir, {}
+        """List subdirectories under self.path.  Ignore start_page and
+        pages args"""
+        #pylint: disable-msg=W0613
+        for dir_ in os.listdir(self.path):
+            if os.path.isdir(os.path.join(self.path, dir_, '.hg')):
+                yield dir_, {}
 
     def is_local(self):
         return True
@@ -38,7 +39,7 @@ class BitbucketWeb(RemoteLister):
         self.name = 'bitbucket'
         
     def list_repos(self, start_page, pages):
-        subpage='all/commits'
+        subpage = 'all/commits'
         for p in range(start_page, start_page + pages):
             url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p)
             with Timer('Read %s' % url):
