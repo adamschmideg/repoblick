@@ -40,7 +40,7 @@ class SqliteStore:
                     self.cursor.execute('''
                     insert into projectattrs (projectid, key, value)
                     values(?, ?, ?)''',
-                    (id, k, v))
+                    (projectid, k, v))
             return projectid, True
         except sqlite3.IntegrityError:
             projectid = self.cursor.execute('select id from projects where hostid=? and name=?',

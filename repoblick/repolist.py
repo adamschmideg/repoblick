@@ -6,27 +6,47 @@ from lxml import html
 from store import SqliteStore
 from utils import Timer, make_int
 
-class LocalLister:
-    """List repos located in local file system, used mainly for testing."""
+class HostInfo:
+    """Information about a host that is needed to mirror a repo from
+    it.  It may include a lister class, too."""
+    def __init__(self, name, lister_class, vcs, urnpattern):
+        self.name = name
+        self.lister_class = lister_class
+        self.vcs = vcs
+        self.urnpattern = urnpattern
 
-    def __init__(self, path):
-        self.path = path
-        self.urn_pattern = path + '/%s'
-        self.name = path.replace(os.path.sep, '-')[1:]
+
+class Lister:
+    "Generic lister to list projects on a host"
+    def __init__(self, urnpattern):
+        self.urnpattern = urnpattern
+
+    def get_url(self, project):
+        "Get the full url of a project using the urnpattern"
+        if '%s' in self.urnpattern:
+            return self.urnpattern % project
+        elif self.urnpattern.endswith('/'):
+            return self.urnpattern + project
+        else:
+            return self.urnpattern + '/' + project
+
+
+class LocalLister(Lister):
+    """List repos located in local file system, used mainly for testing."""
 
     def list_repos(self, start_page, pages):
         """List subdirectories under self.path.  Ignore start_page and
         pages args"""
         #pylint: disable-msg=W0613
-        for dir_ in os.listdir(self.path):
-            if os.path.isdir(os.path.join(self.path, dir_, '.hg')):
-                yield dir_, {}
+        for dirname in os.listdir(self.urnpattern):
+            if os.path.isdir(os.path.join(self.urnpattern, dirname, '.hg')):
+                yield dirname, {}
 
     def is_local(self):
         return True
 
 
-class RemoteLister:
+class RemoteLister(Lister):
     def is_local(self):
         return False
 
@@ -34,10 +54,6 @@ class RemoteLister:
 class BitbucketWeb(RemoteLister):
     """List repos reading bitbucket web pages and parsing them"""
 
-    def __init__(self):
-        self.urn_pattern = 'https://bitbucket.org/%s'
-        self.name = 'bitbucket'
-        
     def list_repos(self, start_page, pages):
         subpage = 'all/commits'
         for p in range(start_page, start_page + pages):
@@ -58,43 +74,50 @@ class BitbucketWeb(RemoteLister):
 
 
 KNOWN_HOSTS = {
-    'bitbucket': dict(name='bitbucket', lister=BitbucketWeb, vcs='hg',
-        urnpattern='https://bitbucket.org/%s'),
-    'bb': dict(name='bitbucket', lister=BitbucketWeb, vcs='hg',
-        urnpattern='https://bitbucket.org/%s'),
-    'googlecode-mercurial': dict(name='googlecode-mercurial', lister=None,
+    'bitbucket': HostInfo(name='bitbucket', lister_class=BitbucketWeb, vcs='hg',
+        urnpattern='https://bitbucket.org'),
+    'bb': HostInfo(name='bitbucket', lister_class=BitbucketWeb, vcs='hg',
+        urnpattern='https://bitbucket.org'),
+    'googlecode-mercurial': HostInfo(name='googlecode-mercurial', lister_class=None,
         vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
-    'gc-hg': dict(name='googlecode-mercurial', lister=None,
+    'gc-hg': HostInfo(name='googlecode-mercurial', lister_class=None,
         vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
-    'googlecode-subversion': dict(name='googlecode-subversion', lister=None,
+    'googlecode-subversion': HostInfo(name='googlecode-subversion', lister_class=None,
         vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
-    'gc-svn': dict(name='googlecode-subversion', lister=None,
+    'gc-svn': HostInfo(name='googlecode-subversion', lister_class=None,
         vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
-    'github': dict(name='github', lister=None,
+    'github': HostInfo(name='github', lister_class=None,
         vcs='git', urnpattern='https://github.com/%.git'),
-    'gh': dict(name='github', lister=None,
+    'gh': HostInfo(name='github', lister_class=None,
         vcs='git', urnpattern='https://github.com/%.git'),
 }
 
-def get_lister(host):
-    """Get a lister for this host"""
+def get_host_info(host):
+    """Get a HostInfo instance using KNOWN_HOSTS"""
     try:
-        return KNOWN_HOSTS[host]()
+        host_info = KNOWN_HOSTS[host]
     except KeyError:
-        return LocalLister(host)
+        if host.startswith('http://') or host.startswith('https://'):
+            raise ValueError('Remote host %s not supported' % host)
+        name = os.path.abspath(host).replace(os.path.sep, '-')
+        if name.startswith('-'):
+            name = name[1:]
+        host_info = HostInfo(name=name, lister_class=LocalLister,
+            vcs=None, urnpattern=host)
+    return host_info
 
 def list_repos(host, db=None, start_page=1, pages=1):
     """List repos using lister.  If host is in KNOWN_HOSTS, use the class
     there.  Otherwise handle host as a local path.  If db_path is None, print them to screen."""
-    lister = get_lister(host)
+    host_info = get_host_info(host)
+    lister = host_info.lister_class(host_info.urnpattern)
     if db:
         with Timer('List repos at %s' % host):
             store = SqliteStore(db)
-            hostid, _ = store.add_host(lister.name, lister.urn_pattern)
+            hostid, _ = store.add_host(host_info.name, host_info.urnpattern)
             for repo in lister.list_repos(start_page, pages):
                 store.add_project(hostid, repo[0], repo[1])
             store.commit()
     else:
-        print lister.name, lister.urn_pattern
         for repo in lister.list_repos(start_page, pages):
             print repo
