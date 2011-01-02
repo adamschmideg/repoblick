@@ -110,8 +110,8 @@ def list_repos(host, db=None, start_page=1, pages=1):
     """List repos using lister.  If host is in KNOWN_HOSTS, use the class
     there.  Otherwise handle host as a local path.  If db_path is None, print them to screen."""
     host_info = get_host_info(host)
-    lister = host_info.lister_class(host_info.urnpattern)
-    if db:
+    if host_info.lister_class:
+        lister = host_info.lister_class(host_info.urnpattern)
         with Timer('List repos at %s' % host):
             store = SqliteStore(db)
             hostid, _ = store.add_host(host_info.name, host_info.urnpattern)
@@ -119,5 +119,4 @@ def list_repos(host, db=None, start_page=1, pages=1):
                 store.add_project(hostid, repo[0], repo[1])
             store.commit()
     else:
-        for repo in lister.list_repos(start_page, pages):
-            print repo
+        raise ValueError('No lister available for %s' % host)
