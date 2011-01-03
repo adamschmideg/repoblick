@@ -38,16 +38,17 @@ def _split_unknown_host(host):
         name = '%s/%s' % (proto,
             host_name.replace('/', '-').replace('.', '-'))
         urnpattern = '%s://%s' % (proto, host_name)
+        host_info = HostInfo(name=name, urnpattern=urnpattern)
     except ValueError:
         # It must be a local path
-        urnpattern = host
         name = os.path.abspath(host).replace(os.path.sep, '-')
         if name.startswith('-'):
             name = name[1:]
         name = 'local/%s' % name
         project = None
+        host_info = HostInfo(name=name, urnpattern=host,
+            lister_module='repoblick.lister.local')
     # Make a host_info
-    host_info = HostInfo(name=name, urnpattern=urnpattern)
     return host_info, project
 
 def split_host(store, host):
@@ -117,48 +118,6 @@ class Lister:
             return self.urnpattern + project
         else:
             return self.urnpattern + '/' + project
-
-
-class LocalLister(Lister):
-    """List repos located in local file system, used mainly for testing."""
-
-    def list_repos(self, start_page, pages):
-        """List subdirectories under self.path.  Ignore start_page and
-        pages args"""
-        #pylint: disable-msg=W0613
-        for dirname in os.listdir(self.urnpattern):
-            if os.path.isdir(os.path.join(self.urnpattern, dirname, '.hg')):
-                yield dirname, {}
-
-    def is_local(self):
-        return True
-
-
-class RemoteLister(Lister):
-    def is_local(self):
-        return False
-
-
-class BitbucketWeb(RemoteLister):
-    """List repos reading bitbucket web pages and parsing them"""
-
-    def list_repos(self, start_page, pages):
-        subpage = 'all/commits'
-        for p in range(start_page, start_page + pages):
-            url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p)
-            with Timer('Read %s' % url):
-                page = html.parse(urlopen(url))
-            projects = page.xpath("/html/body/div/div/ul[@id='repositories']/li/dl")
-            for prj in projects:
-                commits = make_int(prj.xpath("dd[@class='commits']/div/span[1]/a/text()")[0])
-                followers = make_int(prj.xpath("dd[@class='followers']/div/span[1]/a/text()")[0])
-                forks = make_int(prj.xpath("dd[@class='forks']/div/span[1]/a/text()")[0])
-                link = prj.xpath("dd[@class='name']/a[2]/@href")[0]
-                if link.startswith('http'):
-                    schema, _, domain, user, project, _ = link.split('/')
-                else:
-                    _, user, project, _ = link.split('/')
-                yield '%s/%s' % (user, project), dict(commits=commits, watchers=followers, forks=forks)
 
 
 def get_host_info(host):

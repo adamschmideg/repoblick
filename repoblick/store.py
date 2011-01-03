@@ -21,7 +21,9 @@ class SqliteStore:
         with open(create_script) as script:
             self.cursor.executescript(script.read())
         for host_info in [
-            HostInfo(shortname='bb', name='bitbucket', urnpattern='https://bitbucket.org', vcs='hg'),
+            HostInfo(shortname='bb', name='bitbucket',
+                urnpattern='https://bitbucket.org', vcs='hg',
+                lister_module='repoblick.lister.bitbucket'),
             HostInfo(shortname='gh', name='github', urnpattern='https://github.com/%s.git', vcs='git'),
             HostInfo(shortname='gc-hg', name='googlecode-mercurial', urnpattern='https://%s.googlecode.com/hg/', vcs='hg'),
             HostInfo(shortname='gc-svn', name='googlecode-subversion', urnpattern='http://%s.googlecode.com/svn/trunk/', vcs='svn'),

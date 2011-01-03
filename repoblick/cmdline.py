@@ -8,22 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick import repolist, HostInfo
 from repoblick.store import SqliteStore
-from repoblick.utils import mkdirs
-
-def get_host_info(host, project=None):
-    """Get host info if it can be found in KNOWN_HOSTS,
-    or try to split `host` into meaningful chunks"""
-    try:
-        info = repolist.KNOWN_HOSTS[host].copy()
-        info['project'] = project
-    except KeyError:
-        if host.startswith('http://') or host.startswith('https://'):
-            raise ValueError('Remote host %s not supported' % host)
-        dirname, fname = os.path.split(host)
-        info = dict(name=dirname.replace(os.path.sep, '-'),
-            urnpattern='dir/%s', lister=repolist.LocalLister)
-        info['project'] = project or fname
-    return info
+from repoblick.utils import mkdirs, Timer
 
 def list_command(args):
     "List repositories and store their names and attributes"
@@ -38,9 +23,15 @@ def list_command(args):
         for prj in all_projects:
             store.add_project(host_info.id, prj, {})
         store.commit()
-    else:
+    elif host_info.lister_module:
         # Try to get lister
-        pass
+        lister = __import__(host_info.lister_module, fromlist=['list_repos'])
+        with Timer('List repos at %s' % host_info.name):
+            for repo in lister.list_repos(host_info, args.start_page, args.pages):
+                store.add_project(host_info.id, repo[0], repo[1])
+            store.commit()
+    else:
+        print 'Warning: No lister available for %s' % host_info.name
 
 def mirror_command(args):
     "Make a local mirror of repositories for later processing"
