@@ -4,8 +4,11 @@ A command line interface to the full repoblick functionality
 import argparse
 import os
 
-import repolist
-from utils import mkdirs
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick import repolist, HostInfo
+from repoblick.store import SqliteStore
+from repoblick.utils import mkdirs
 
 def get_host_info(host, project=None):
     """Get host info if it can be found in KNOWN_HOSTS,
@@ -24,7 +27,20 @@ def get_host_info(host, project=None):
 
 def list_command(args):
     "List repositories and store their names and attributes"
-    host_info, project = repolist.HostInfo.split_host(None, args.host)
+    store = SqliteStore(args.dir)
+    host_info, project = repolist.split_host(store, args.host)
+    all_projects = [project] if project else []
+    all_projects += args.projects
+    if args.from_file:
+        with open(args.from_file) as project_file:
+            all_projects += project_file.readlines()
+    if all_projects:
+        for prj in all_projects:
+            store.add_project(host_info.id, prj, {})
+        store.commit()
+    else:
+        # Try to get lister
+        pass
 
 def mirror_command(args):
     "Make a local mirror of repositories for later processing"
@@ -42,48 +58,40 @@ def splot_command(args):
     "Make a plot of a single project using SVNPlot"
     print 'Not implemented yet', args
 
-def add_host_arg(parser):
-    """Add an argument to parser, include a help text with know hosts"""
+def _add_common_arguments(parser):
+    "Add host and projects arguments to subparser"
     parser.add_argument('host',
-        help='Either a known host (%s), or a local path' \
-            % ', '.join(sorted(repolist.KNOWN_HOSTS.keys())))
-
-def add_project_arg(parser):
-    """Add project as optional positional argument"""
-    parser.add_argument('project', nargs='?',
+        help='Either a known host (see %(prog)s show hosts), or a local path')
+    parser.add_argument('projects', nargs='*',
         help='A specific project at the host.  If not given, all projects at host are used')
-    
+
 def main():
     """Process cmdline args and call the appropriate function"""
     parser = argparse.ArgumentParser(description='Explore version controlled repositories')
     parser.add_argument('-d', '--dir',
         help='Directory to store databases and repository mirrors',
         default=os.path.expanduser('~/.repoblick'))
+    parser.add_argument('-f', '--from-file',
+        help='File to read for projects')
     subparsers = parser.add_subparsers()
 
     list_parser = subparsers.add_parser('list',
         help=list_command.__doc__)
-    add_host_arg(list_parser)
+    _add_common_arguments(list_parser)
     list_parser.add_argument('-s', '--start-page', default=1)
     list_parser.add_argument('-p', '--pages', default=1)
     list_parser.set_defaults(func=list_command)
 
     mirror_parser = subparsers.add_parser('mirror',
         help=mirror_command.__doc__)
-    add_host_arg(mirror_parser)
-    add_project_arg(mirror_parser)
     mirror_parser.set_defaults(func=mirror_command)
 
     log2db_parser = subparsers.add_parser('log2db',
         help=log2db_command.__doc__)
-    add_host_arg(log2db_parser)
-    add_project_arg(log2db_parser)
     log2db_parser.set_defaults(func=log2db_command)
 
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
-    add_host_arg(plot_parser)
-    add_project_arg(plot_parser)
     plot_parser.set_defaults(func=plot_command)
 
     splot_parser = subparsers.add_parser('splot',
@@ -94,8 +102,6 @@ def main():
     splot_parser.add_argument('-s', '--svnplot-db',
         help='Location of svnplot-specific database to be generated (default: %(default)s)',
         default='/tmp/svnplot.sqlite')
-    add_host_arg(splot_parser)
-    add_project_arg(splot_parser)
     splot_parser.set_defaults(func=splot_command)
 
     args = parser.parse_args()

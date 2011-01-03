@@ -37,8 +37,9 @@ class SqliteStore:
                 ''', host_info.__dict__)
             return self.cursor.lastrowid, True
         except sqlite3.IntegrityError:
-            hostid = self.cursor.execute('select id from hosts where name=? and urnpattern=?', 
-                (host_info.name, host_info.urn_pattern)).fetchone()[0]
+            hostid = self.cursor.execute('''
+                select id from hosts where name=:name and urnpattern=:urnpattern
+                ''', host_info.__dict__).fetchone()[0]
             return hostid, False
 
     def add_project(self, hostid, name, attrs=None):
