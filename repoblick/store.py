@@ -87,11 +87,11 @@ class SqliteStore:
                 (commitid, file_change.filename)).fetchone()[0]
             return filechangeid, False
         
-    def get_active_projects(self):
-        return self.cursor.execute('''
-            select h.urnpattern, p.name as project, p.id as projectid
-            from hosts h, projects p
-            where p.status is null''').fetchall()
+    def get_projects(self, host_info):
+        "Get a generator of projects at a host"
+        self.cursor.execute('select * from projects where hostid=?',
+            [host_info.id])
+        return self.cursor
         
     def import_log(self, projectid, mirror):
         "Import logs of a repo_mirror into this store"

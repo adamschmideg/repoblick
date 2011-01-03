@@ -10,17 +10,26 @@ from repoblick import repolist, HostInfo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, Timer
 
+def _host_info_and_projects(store, args):
+    "Get host_info and projects from command line"
+    host_info, prj = repolist.split_host(store, args.host)
+    projects = [prj] if prj else []
+    projects += args.projects
+    if args.from_file:
+        with open(args.from_file) as project_file:
+            projects += project_file.readlines()
+    return host_info, projects
+
+def _projects_from_store(store, host_info):
+    "Get project names at host from database"
+    return [prj['name'] for prj in store.get_projects(host_info)]
+
 def list_command(args):
     "List repositories and store their names and attributes"
     store = SqliteStore(args.dir)
-    host_info, project = repolist.split_host(store, args.host)
-    all_projects = [project] if project else []
-    all_projects += args.projects
-    if args.from_file:
-        with open(args.from_file) as project_file:
-            all_projects += project_file.readlines()
-    if all_projects:
-        for prj in all_projects:
+    host_info, projects = _host_info_and_projects(store, args)
+    if projects:
+        for prj in projects:
             store.add_project(host_info.id, prj, {})
         store.commit()
     elif host_info.lister_module:
@@ -35,7 +44,22 @@ def list_command(args):
 
 def mirror_command(args):
     "Make a local mirror of repositories for later processing"
-    print 'Not implemented yet', args
+    store = SqliteStore(args.dir)
+    host_info, projects = _host_info_and_projects(store, args)
+    if not projects:
+        projects = _projects_from_store(store, host_info)
+    if not projects and not args.only_this_step:
+        # Try to get a listing of projects
+        list_command(args)
+        projects = _projects_from_store(store, host_info)
+    if projects:
+        for prj in projects:
+            url = host_info.project_url(prj)
+            target = os.path.join(args.dir, 'mirror', host_info.name, prj)
+            with Timer('Mirror %s' % (url)):
+                pass
+    else:
+        print 'Warning: No projects found or given'
 
 def log2db_command(args):
     "Process logs of repositories"
@@ -63,18 +87,22 @@ def main():
         help='Directory to store databases and repository mirrors',
         default=os.path.expanduser('~/.repoblick'))
     parser.add_argument('-f', '--from-file',
-        help='File to read for projects')
+        help='File to read for projects', type=file)
+    parser.add_argument('-o', '--only-this-step',
+        help='Do not perform operations of previous steps even if needed',
+        action='store_true')
+    parser.add_argument('-s', '--start-page', default=1)
+    parser.add_argument('-p', '--pages', default=1)
     subparsers = parser.add_subparsers()
 
     list_parser = subparsers.add_parser('list',
         help=list_command.__doc__)
     _add_common_arguments(list_parser)
-    list_parser.add_argument('-s', '--start-page', default=1)
-    list_parser.add_argument('-p', '--pages', default=1)
     list_parser.set_defaults(func=list_command)
 
     mirror_parser = subparsers.add_parser('mirror',
         help=mirror_command.__doc__)
+    _add_common_arguments(mirror_parser)
     mirror_parser.set_defaults(func=mirror_command)
 
     log2db_parser = subparsers.add_parser('log2db',

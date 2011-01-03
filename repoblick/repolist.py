@@ -105,21 +105,6 @@ def split_host(store, host):
     return host_info, project
 
 
-class Lister:
-    "Generic lister to list projects on a host"
-    def __init__(self, urnpattern):
-        self.urnpattern = urnpattern
-
-    def get_url(self, project):
-        "Get the full url of a project using the urnpattern"
-        if '%s' in self.urnpattern:
-            return self.urnpattern % project
-        elif self.urnpattern.endswith('/'):
-            return self.urnpattern + project
-        else:
-            return self.urnpattern + '/' + project
-
-
 def get_host_info(host):
     """Get a HostInfo instance using KNOWN_HOSTS"""
     try:

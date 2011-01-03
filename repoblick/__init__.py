@@ -10,3 +10,12 @@ class HostInfo:
         self.lister_module = lister_module
         self.vcs = vcs
         self.id = id
+
+    def project_url(self, project):
+        "Get the full url of a project using the urnpattern"
+        if '%s' in self.urnpattern:
+            return self.urnpattern % project
+        elif self.urnpattern.endswith('/'):
+            return self.urnpattern + project
+        else:
+            return self.urnpattern + '/' + project

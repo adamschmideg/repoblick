@@ -34,8 +34,8 @@
     - mirror projects
 - mirror /path/to/dir
     - get projects in database that belong to host path-to-dir
-    - mirror projects
     - if no project is found, list `/path/to/dir` first, then try again (unless --only-this-step)
+    - mirror projects
 - mirror gh
     - get projects in database that belong to host github.com
     - mirror projects
