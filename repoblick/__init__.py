@@ -1,3 +1,4 @@
+import os
 
 class HostInfo:
     """Information about a host that is needed to mirror a repo from
@@ -11,7 +12,7 @@ class HostInfo:
         self.vcs = vcs
         self.id = id
 
-    def project_url(self, project):
+    def project_remote_url(self, project):
         "Get the full url of a project using the urnpattern"
         if '%s' in self.urnpattern:
             return self.urnpattern % project
@@ -19,3 +20,7 @@ class HostInfo:
             return self.urnpattern + project
         else:
             return self.urnpattern + '/' + project
+
+    def project_local_path(self, working_dir, project):
+        "Get the local path for a project"
+        return os.path.join(working_dir, 'mirror', self.name, project)

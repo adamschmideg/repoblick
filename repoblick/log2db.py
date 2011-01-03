@@ -36,6 +36,25 @@ class FileChange:
         self.is_binary = is_binary
 
 
+def mirror_repo(remote_url, local_path, max_commits=None):
+    """Mirror a remote hg repository to a local clone.  If max_commits is
+    not given, all commits are cloned"""
+    devnull = open(os.devnull, 'w')
+    if os.path.exists(local_path):
+        if max_commits:
+            proc = Popen(['hg', 'pull', '-r', str(max_commits - 1), '-R', local_path], stdout=devnull)
+        else:
+            proc = Popen(['hg', 'pull', '-R', local_path], stdout=devnull)
+    else:
+        os.makedirs(local_path)
+        if max_commits:
+            proc = Popen(['hg', 'clone', '-r', str(max_commits - 1), remote_url, local_path], stdout=devnull)
+        else:
+            proc = Popen(['hg', 'clone', remote_url, local_path], stdout=devnull)
+    proc.wait()
+    devnull.close()
+
+
 class HgMirror:
     "Local mirror of a remote hg repo"
 
@@ -47,25 +66,6 @@ class HgMirror:
 
     def __str__(self):
         return 'HgMirror(remote_repo=%s, local_repo=%s)' % (self.remote_repo, self.local_repo)
-
-    def mirror(self, count=2):
-        "Mirror count number of commits from remote to local"
-        if self.remote_repo != self.local_repo:
-            with Timer('Mirror %s' % self.remote_repo):
-                devnull = open(os.devnull, 'w')
-                if os.path.exists(self.local_repo):
-                    if count:
-                        proc = Popen(['hg', 'pull', '-r', str(count - 1), '-R', self.local_repo], stdout=devnull)
-                    else:
-                        proc = Popen(['hg', 'pull', '-R', self.local_repo], stdout=devnull)
-                else:
-                    os.makedirs(self.local_repo)
-                    if count:
-                        proc = Popen(['hg', 'clone', '-r', str(count - 1), self.remote_repo, self.local_repo], stdout=devnull)
-                    else:
-                        proc = Popen(['hg', 'clone', self.remote_repo, self.local_repo], stdout=devnull)
-                proc.wait()
-                devnull.close()
 
     def commits(self):
         """Return Commit instances"""

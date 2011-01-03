@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick import repolist, HostInfo
+from repoblick.log2db import mirror_repo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, Timer
 
@@ -54,10 +55,10 @@ def mirror_command(args):
         projects = _projects_from_store(store, host_info)
     if projects:
         for prj in projects:
-            url = host_info.project_url(prj)
-            target = os.path.join(args.dir, 'mirror', host_info.name, prj)
-            with Timer('Mirror %s' % (url)):
-                pass
+            source = host_info.project_remote_url(prj)
+            dest = host_info.project_local_path(args.dir, prj)
+            with Timer('Mirror %s' % (source)):
+                mirror_repo(source, dest, max_commits=args.commits)
     else:
         print 'Warning: No projects found or given'
 
@@ -91,8 +92,10 @@ def main():
     parser.add_argument('-o', '--only-this-step',
         help='Do not perform operations of previous steps even if needed',
         action='store_true')
-    parser.add_argument('-s', '--start-page', default=1)
-    parser.add_argument('-p', '--pages', default=1)
+    parser.add_argument('-c', '--commits',
+        help='Maximum number of commits to mirror', type=int)
+    parser.add_argument('-s', '--start-page', default=1, type=int)
+    parser.add_argument('-p', '--pages', default=1, type=int)
     subparsers = parser.add_subparsers()
 
     list_parser = subparsers.add_parser('list',
