@@ -49,9 +49,3 @@ create table if not exists files (
   foreign key(commitid) references commits(id),
   unique(commitid, file)
 );
-
--- recognized hosts
-insert into hosts(shortname, name, urnpattern, vcs) values('bb', 'bitbucket', 'https://bitbucket.org', 'hg');
-insert into hosts(shortname, name, urnpattern, vcs) values('gh', 'github', 'https://github.com/%s.git', 'git');
-insert into hosts(shortname, name, urnpattern, vcs) values('gc-hg', 'googlecode-mercurial', 'https://%s.googlecode.com/hg/', 'hg');
-insert into hosts(shortname, name, urnpattern, vcs) values('gc-svn', 'googlecode-subversion', 'http://%s.googlecode.com/svn/trunk/', 'svn');

@@ -4,6 +4,9 @@ Store repodata in an sqlite database
 import os
 import sqlite3
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick import HostInfo
 from utils import Timer, file_size, mkdirs, relative_file
 
 class SqliteStore:
@@ -17,6 +20,14 @@ class SqliteStore:
         create_script = relative_file(__file__, 'create.sql')
         with open(create_script) as script:
             self.cursor.executescript(script.read())
+        for host_info in [
+            HostInfo(shortname='bb', name='bitbucket', urnpattern='https://bitbucket.org', vcs='hg'),
+            HostInfo(shortname='gh', name='github', urnpattern='https://github.com/%s.git', vcs='git'),
+            HostInfo(shortname='gc-hg', name='googlecode-mercurial', urnpattern='https://%s.googlecode.com/hg/', vcs='hg'),
+            HostInfo(shortname='gc-svn', name='googlecode-subversion', urnpattern='http://%s.googlecode.com/svn/trunk/', vcs='svn'),
+            ]:
+            self.add_host(host_info)
+        self.commit()
             
     def add_host(self, host_info):
         try:

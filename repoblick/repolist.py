@@ -3,116 +3,106 @@ import os
 
 from lxml import html
 
-from store import SqliteStore
-from utils import Timer, make_int
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick import HostInfo
+from repoblick.store import SqliteStore
+from repoblick.utils import Timer, make_int
 
-class HostInfo:
-    """Information about a host that is needed to mirror a repo from
-    it.  It may include a lister class, too."""
-    def __init__(self, name, urnpattern, shortname=None,
-            lister_module=None, vcs=None, id=None):
-        self.name = name
-        self.urnpattern = urnpattern
-        self.shortname = shortname
-        self.lister_module = lister_module
-        self.vcs = vcs
-        self.id = id
-
-    @staticmethod
-    def _split_unknown_host(host):
-        """Split a host not found in db to (host_info, project)
-        >>> info, prj = HostInfo._split_unknown_host('http://example.com/foo/bar')
-        >>> prj
-        'foo/bar'
-        >>> info.name
-        'http/example-com'
-        >>> info.urnpattern
-        'http://example.com'
-        >>> info, prj = HostInfo._split_unknown_host('http://repo.example.com')
-        >>> prj
-        >>> info.name
-        'http/repo-example-com'
-        >>> info, prj = HostInfo._split_unknown_host('/path/to/somewhere')
-        >>> prj
-        >>> info.name
-        'local/path-to-somewhere'
-        """
-        # It may start with a protocol
+def _split_unknown_host(host):
+    """Split a host not found in db to (host_info, project)
+    >>> info, prj = _split_unknown_host('http://example.com/foo/bar')
+    >>> prj
+    'foo/bar'
+    >>> info.name
+    'http/example-com'
+    >>> info.urnpattern
+    'http://example.com'
+    >>> info, prj = _split_unknown_host('http://repo.example.com')
+    >>> prj
+    >>> info.name
+    'http/repo-example-com'
+    >>> info, prj = _split_unknown_host('/path/to/somewhere')
+    >>> prj
+    >>> info.name
+    'local/path-to-somewhere'
+    """
+    # It may start with a protocol
+    try:
+        proto, rest = host.split('://')
         try:
-            proto, rest = host.split('://')
-            try:
-                host_name, project = rest.split('/', 1)
-            except ValueError:
-                host_name = rest
-                project = None
-            name = '%s/%s' % (proto,
-                host_name.replace('/', '-').replace('.', '-'))
-            urnpattern = '%s://%s' % (proto, host_name)
+            host_name, project = rest.split('/', 1)
         except ValueError:
-            # It must be a local path
-            urnpattern = host
-            name = os.path.abspath(host).replace(os.path.sep, '-')
-            if name.startswith('-'):
-                name = name[1:]
-            name = 'local/%s' % name
+            host_name = rest
             project = None
-        # Make a host_info
-        host_info = HostInfo(name=name, urnpattern=urnpattern)
-        return host_info, project
+        name = '%s/%s' % (proto,
+            host_name.replace('/', '-').replace('.', '-'))
+        urnpattern = '%s://%s' % (proto, host_name)
+    except ValueError:
+        # It must be a local path
+        urnpattern = host
+        name = os.path.abspath(host).replace(os.path.sep, '-')
+        if name.startswith('-'):
+            name = name[1:]
+        name = 'local/%s' % name
+        project = None
+    # Make a host_info
+    host_info = HostInfo(name=name, urnpattern=urnpattern)
+    return host_info, project
 
-    @staticmethod
-    def split_host(store, host):
-        """Split a host name to (host_info, project) where project may
-        be None if the whole name can be recognized as a host.  The
-        host_info is guaranteed to be saved in store.
-        >>> import tempfile, shutil
-        >>> db_dir = tempfile.mkdtemp()
-        >>> store = SqliteStore(db_dir)
-        >>> info, prj = HostInfo.split_host(store, 'bb')
-        >>> prj
-        >>> info.name
-        u'bitbucket'
-        >>> info, prj = HostInfo.split_host(store, 'https://bitbucket.org/foo/bar')
-        >>> prj
-        'foo/bar'
-        >>> info.name
-        u'bitbucket'
-        
-        Unrecognized hosts are saved
-        >>> info, prj = HostInfo.split_host(store, '/path/to/location')
-        >>> new_info, prj = HostInfo.split_host(store, '/path/to/location')
-        >>> info.id == new_info.id
-        True
-        >>> shutil.rmtree(db_dir)
-        """
-        # Try an exact match
+def split_host(store, host):
+    """Split a host name to (host_info, project) where project may
+    be None if the whole name can be recognized as a host.  The
+    host_info is guaranteed to be saved in store.
+    >>> import tempfile, shutil
+    >>> db_dir = tempfile.mkdtemp()
+    >>> store = SqliteStore(db_dir)
+    >>> info, prj = split_host(store, 'bb')
+    >>> prj
+    >>> info.name
+    u'bitbucket'
+    >>> info, prj = split_host(store, 'https://bitbucket.org/foo/bar')
+    >>> prj
+    'foo/bar'
+    >>> info.name
+    u'bitbucket'
+    
+    Unrecognized hosts are saved
+    >>> info, prj = split_host(store, '/path/to/location')
+    >>> new_info, prj = split_host(store, '/path/to/location')
+    >>> info.id == new_info.id
+    True
+    >>> shutil.rmtree(db_dir)
+    """
+    # Try an exact match
+    store.cursor.execute('''
+        select * from hosts where shortname=:host
+        union
+        select * from hosts where name=:host
+        union
+        select * from hosts where urnpattern=:host
+        ''', dict(host=host))
+    raw_info = store.cursor.fetchone()
+    if raw_info:
+        host_info = HostInfo(**raw_info)
+        project = None
+    else:
+        # Try a partial match with urnpattern
         store.cursor.execute('''
-            select * from hosts where shortname=:host
-            union
-            select * from hosts where name=:host
-            union
-            select * from hosts where urnpattern=:host
+            select * from hosts where :host like urnpattern || "%"
             ''', dict(host=host))
         raw_info = store.cursor.fetchone()
         if raw_info:
             host_info = HostInfo(**raw_info)
-            project = None
+            project = host[len(host_info.urnpattern) + 1:]
         else:
-            # Try a partial match with urnpattern
-            store.cursor.execute('''
-                select * from hosts where :host like urnpattern || "%"
-                ''', dict(host=host))
-            raw_info = store.cursor.fetchone()
-            if raw_info:
-                host_info = HostInfo(**raw_info)
-                project = host[len(host_info.urnpattern) + 1:]
-            else:
-                # It's an unknown host yet
-                host_info, project = HostInfo._split_unknown_host(host)
-                hostid, _ = store.add_host(host_info)
-                store.commit()
-                host_info.id = hostid
-        return host_info, project
+            # It's an unknown host yet
+            host_info, project = _split_unknown_host(host)
+            hostid, _ = store.add_host(host_info)
+            store.commit()
+            host_info.id = hostid
+    return host_info, project
+
 
 class Lister:
     "Generic lister to list projects on a host"
