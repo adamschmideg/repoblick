@@ -33,3 +33,8 @@ def make_int(num_str):
 def relative_file(fname, path):
     """Get a path relative to file"""
     return os.path.join(os.path.dirname(fname), path)
+
+def mkdirs(path):
+    """Make possibly directories if they don't exist"""
+    if not os.path.exists(path):
+        os.makedirs(path)

@@ -1,0 +1,45 @@
+
+- list bb
+    - crawl bitbucket.org
+    - store results
+- list http://bitbucket.org
+    - crawl bitbucket.org
+    - store results
+- list /path/to/dir
+    - store local/path-to-dir as a new host
+    - list /path/to/dir
+    - store results 
+- list gh
+    - raise NoListerError
+- list http://github.com/foo/bar
+    - stay offline
+    - store foo/bar as a github project
+- list http://googlecode.com/foo
+    - stay offline
+    - store http/googlecode-com as a new host
+    - store foo as a project
+- list bb foo
+    - stay offline
+    - store foo as a bitbucket project in database
+- list gh foo
+    - stay offline
+    - store foo as a github project in database
+- list gc-hg foo
+    - stay offline
+    - store foo as a googlecode-mercurial project in database
+
+- mirror bb
+    - get projects in database that belong to host bitbucket.org
+    - if no project is found, `list bitbucket` first, then try again (unless --only-this-step)
+    - mirror projects
+- mirror /path/to/dir
+    - get projects in database that belong to host path-to-dir
+    - mirror projects
+    - if no project is found, list `/path/to/dir` first, then try again (unless --only-this-step)
+- mirror gh
+    - get projects in database that belong to host github.com
+    - mirror projects
+    - if no project is found, warn about missing lister (unless --only-this-step)
+- mirror http://example.com/foo
+    - `list http://example.com/foo` to store it as host and project (even if --only-this-step is given)
+    - mirror it

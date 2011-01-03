@@ -5,11 +5,7 @@ import argparse
 import os
 
 import repolist
-
-def init_dir(dirname):
-    "Create working directory if it doesn't exist"
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
+from utils import mkdirs
 
 def get_host_info(host, project=None):
     """Get host info if it can be found in KNOWN_HOSTS,
@@ -28,10 +24,7 @@ def get_host_info(host, project=None):
 
 def list_command(args):
     "List repositories and store their names and attributes"
-    init_dir(args.dir)
-    repolist.list_repos(args.host,
-        db=os.path.join(args.dir, 'repolist.sqlite'),
-        start_page=args.start_page, pages=args.pages)
+    host_info, project = repolist.HostInfo.split_host(None, args.host)
 
 def mirror_command(args):
     "Make a local mirror of repositories for later processing"

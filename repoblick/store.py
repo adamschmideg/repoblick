@@ -1,15 +1,17 @@
 """
-Store repodata in a persistent format, like a database or csv files
+Store repodata in an sqlite database
 """
+import os
 import sqlite3
 
-from utils import Timer, file_size, relative_file
+from utils import Timer, file_size, mkdirs, relative_file
 
 class SqliteStore:
 
-    def __init__(self, path):
-        self.path = path
-        con = sqlite3.connect(path)
+    def __init__(self, db_dir):
+        mkdirs(db_dir)
+        self.path = os.path.join(db_dir, 'logdata.sqlite')
+        con = sqlite3.connect(self.path)
         con.row_factory = sqlite3.Row
         self.cursor = con.cursor()
         create_script = relative_file(__file__, 'create.sql')
