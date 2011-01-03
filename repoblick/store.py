@@ -18,16 +18,16 @@ class SqliteStore:
         with open(create_script) as script:
             self.cursor.executescript(script.read())
             
-    def add_host(self, host_name, urn_pattern):
+    def add_host(self, host_info):
         try:
             self.cursor.execute('''
-                insert into hosts (name, urnpattern)
-                values(?, ?)''',
-                (host_name, urn_pattern))
+                insert into hosts (name, urnpattern, shortname, lister_module, vcs)
+                values(:name, :urnpattern, :shortname, :lister_module, :vcs)
+                ''', host_info.__dict__)
             return self.cursor.lastrowid, True
         except sqlite3.IntegrityError:
             hostid = self.cursor.execute('select id from hosts where name=? and urnpattern=?', 
-                (host_name, urn_pattern)).fetchone()[0]
+                (host_info.name, host_info.urn_pattern)).fetchone()[0]
             return hostid, False
 
     def add_project(self, hostid, name, attrs=None):

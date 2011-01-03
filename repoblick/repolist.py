@@ -10,13 +10,13 @@ class HostInfo:
     """Information about a host that is needed to mirror a repo from
     it.  It may include a lister class, too."""
     def __init__(self, name, urnpattern, shortname=None,
-            lister_class=None, vcs=None, hostid=None):
+            lister_module=None, vcs=None, id=None):
         self.name = name
         self.urnpattern = urnpattern
         self.shortname = shortname
-        self.lister_class = lister_class
+        self.lister_module = lister_module
         self.vcs = vcs
-        self.hostid = hostid
+        self.id = id
 
     @staticmethod
     def _split_unknown_host(host):
@@ -64,7 +64,27 @@ class HostInfo:
     def split_host(store, host):
         """Split a host name to (host_info, project) where project may
         be None if the whole name can be recognized as a host.  The
-        host_info is guaranteed to be saved in store."""
+        host_info is guaranteed to be saved in store.
+        >>> import tempfile, shutil
+        >>> db_dir = tempfile.mkdtemp()
+        >>> store = SqliteStore(db_dir)
+        >>> info, prj = HostInfo.split_host(store, 'bb')
+        >>> prj
+        >>> info.name
+        u'bitbucket'
+        >>> info, prj = HostInfo.split_host(store, 'https://bitbucket.org/foo/bar')
+        >>> prj
+        'foo/bar'
+        >>> info.name
+        u'bitbucket'
+        
+        Unrecognized hosts are saved
+        >>> info, prj = HostInfo.split_host(store, '/path/to/location')
+        >>> new_info, prj = HostInfo.split_host(store, '/path/to/location')
+        >>> info.id == new_info.id
+        True
+        >>> shutil.rmtree(db_dir)
+        """
         # Try an exact match
         store.cursor.execute('''
             select * from hosts where shortname=:host
@@ -88,9 +108,10 @@ class HostInfo:
                 project = host[len(host_info.urnpattern) + 1:]
             else:
                 # It's an unknown host yet
-                host_info = HostInfo._split_unknown_host(host)
+                host_info, project = HostInfo._split_unknown_host(host)
                 hostid, _ = store.add_host(host_info)
-                host_info.hostid = hostid
+                store.commit()
+                host_info.id = hostid
         return host_info, project
 
 class Lister:
@@ -149,25 +170,6 @@ class BitbucketWeb(RemoteLister):
                     _, user, project, _ = link.split('/')
                 yield '%s/%s' % (user, project), dict(commits=commits, watchers=followers, forks=forks)
 
-
-KNOWN_HOSTS = {
-    'bitbucket': HostInfo(name='bitbucket', lister_class=BitbucketWeb, vcs='hg',
-        urnpattern='https://bitbucket.org'),
-    'bb': HostInfo(name='bitbucket', lister_class=BitbucketWeb, vcs='hg',
-        urnpattern='https://bitbucket.org'),
-    'googlecode-mercurial': HostInfo(name='googlecode-mercurial', lister_class=None,
-        vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
-    'gc-hg': HostInfo(name='googlecode-mercurial', lister_class=None,
-        vcs='hg', urnpattern='https://%s.googlecode.com/hg/'),
-    'googlecode-subversion': HostInfo(name='googlecode-subversion', lister_class=None,
-        vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
-    'gc-svn': HostInfo(name='googlecode-subversion', lister_class=None,
-        vcs='svn', urnpattern='http://svnplot.googlecode.com/svn/trunk/'),
-    'github': HostInfo(name='github', lister_class=None,
-        vcs='git', urnpattern='https://github.com/%.git'),
-    'gh': HostInfo(name='github', lister_class=None,
-        vcs='git', urnpattern='https://github.com/%.git'),
-}
 
 def get_host_info(host):
     """Get a HostInfo instance using KNOWN_HOSTS"""

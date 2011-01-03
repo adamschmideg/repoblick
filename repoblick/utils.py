@@ -1,5 +1,8 @@
+from contextlib import contextmanager
 from datetime import timedelta
-import os, time
+import os
+import tempfile
+import time
 
 class Timer:
     """Context manager for timing a code block, for example:
@@ -16,6 +19,15 @@ class Timer:
     def __exit__(self, *args):
         elapsed = time.time() - self.start
         print("%s:\t%0.11s" % (self.name, timedelta(seconds=elapsed)))
+
+
+@contextmanager
+def TempDir(suffix='', prefix='tmp'):
+    "Context manager creating a temp dir, then deleting it on exit"
+    dirname = tempfile.mkdtemp(suffix=self.suffix, prefix=self.prefix)
+    yield dirname
+    os.removedirs(self.dirname)
+
 
 def file_size(file_or_size):
     """Human readable format of file size"""
