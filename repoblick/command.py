@@ -145,9 +145,10 @@ def import_log(store, projectid, local_repo_path):
     try:
         hg_ui = ui.ui()
         for commit in _commits(local_repo_path):
-            commitid, _ = store.add_commit(projectid, commit)
-            for file_change in _file_changes(hg_ui, local_repo_path, commit):
-                store.add_file_change(commitid, file_change)
+            commitid, commit_saved = store.add_commit(projectid, commit)
+            if not commit_saved:
+                for file_change in _file_changes(hg_ui, local_repo_path, commit):
+                    store.add_file_change(commitid, file_change)
         store.cursor.connection.commit()
     except:
         store.cursor.connection.rollback()
