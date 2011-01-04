@@ -17,8 +17,12 @@ def _host_info_and_projects(store, args):
     projects = [prj] if prj else []
     projects += args.projects
     if args.from_file:
-        with open(args.from_file) as project_file:
-            projects += project_file.readlines()
+        if os.path.isfile(args.from_file):
+            with open(args.from_file) as project_file:
+                projects += [line.strip() for line in project_file.readlines()]
+        else:
+            raise argparse.ArgumentError(None,
+                '%s is not a readable file' % args.from_file)
     return host_info, projects
 
 def _projects_from_store(store, host_info):
@@ -127,7 +131,7 @@ def main():
         help='Directory to store databases and repository mirrors',
         default=os.path.expanduser('~/.repoblick'))
     parser.add_argument('-f', '--from-file',
-        help='File to read for projects', type=file)
+        help='File to read for projects')
     parser.add_argument('-o', '--only-this-step',
         help='Do not perform operations of previous steps even if needed',
         action='store_true')
