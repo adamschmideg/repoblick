@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick.command import _split_host, import_log, mirror_repo
 from repoblick.store import SqliteStore
-from repoblick.utils import mkdirs, Timer
+from repoblick.utils import mkdirs, relative_file, Timer
 
 def _host_info_and_projects(store, args):
     "Get host_info and projects from command line"
@@ -80,6 +80,23 @@ def import_command(args):
             with Timer('Process logs %s' % (path)):
                 import_log(store, projectid, path)
 
+def statdb_command(args):
+    "Convert logdata database to a statistical database"
+    store = SqliteStore(args.dir)
+    host_info, projects = _host_info_and_projects(store, args)
+    if not projects:
+        projects = _projects_from_store(store, host_info)
+    if not projects and not args.only_this_step:
+        import_command(args)
+        projects = _projects_from_store(store, host_info)
+    # TODO: convert only projects affected
+    statdb = os.path.join(args.dir, 'statdb.sqlite')
+    store.cursor.execute('attach database "%s" as stat' % statdb, [])
+    script_file = relative_file(__file__, 'stat.sql')
+    with Timer('Create statistical database'):
+        with open(script_file) as script:
+            store.cursor.executescript(script.read())
+
 def plot_command(args):
     "Make a plot of log data"
     print 'Not implemented yet', args
@@ -126,6 +143,11 @@ def main():
         help=import_command.__doc__)
     _add_common_arguments(import_parser)
     import_parser.set_defaults(func=import_command)
+
+    statdb_parser = subparsers.add_parser('statdb',
+        help=statdb_command.__doc__)
+    _add_common_arguments(statdb_parser)
+    statdb_parser.set_defaults(func=statdb_command)
 
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
