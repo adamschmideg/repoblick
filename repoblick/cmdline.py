@@ -6,7 +6,6 @@ import os
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from repoblick import repolist, HostInfo
 from repoblick.command import _split_host, import_log, mirror_repo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, Timer
@@ -62,7 +61,7 @@ def mirror_command(args):
     else:
         print 'Warning: No projects found or given'
 
-def log2db_command(args):
+def import_command(args):
     "Process logs of repositories and put them into the database"
     store = SqliteStore(args.dir)
     host_info, projects = _host_info_and_projects(store, args)
@@ -123,10 +122,10 @@ def main():
     _add_common_arguments(mirror_parser)
     mirror_parser.set_defaults(func=mirror_command)
 
-    log2db_parser = subparsers.add_parser('log2db',
-        help=log2db_command.__doc__)
-    _add_common_arguments(log2db_parser)
-    log2db_parser.set_defaults(func=log2db_command)
+    import_parser = subparsers.add_parser('import',
+        help=import_command.__doc__)
+    _add_common_arguments(import_parser)
+    import_parser.set_defaults(func=import_command)
 
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
