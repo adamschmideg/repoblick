@@ -7,14 +7,13 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick import repolist, HostInfo
-from repoblick.command import import_log
-from repoblick.log2db import mirror_repo
+from repoblick.command import _split_host, import_log, mirror_repo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, Timer
 
 def _host_info_and_projects(store, args):
     "Get host_info and projects from command line"
-    host_info, prj = repolist.split_host(store, args.host)
+    host_info, prj = _split_host(store, args.host)
     projects = [prj] if prj else []
     projects += args.projects
     if args.from_file:
