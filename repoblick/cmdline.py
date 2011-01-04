@@ -6,6 +6,7 @@ import os
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick import plot
 from repoblick.command import _split_host, import_log, mirror_repo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, relative_file, Timer
@@ -99,7 +100,14 @@ def statdb_command(args):
 
 def plot_command(args):
     "Make a plot of log data"
-    print 'Not implemented yet', args
+    store = SqliteStore(args.dir)
+    host_info, projects = _host_info_and_projects(store, args)
+    statdb = os.path.join(args.dir, 'statdb.sqlite')
+    store.cursor.execute('attach database "%s" as stat' % statdb, [])
+    image_dir = os.path.join(args.dir, 'output', host_info.name)
+    mkdirs(image_dir)
+    with Timer('Generate plots to %s' % image_dir):
+        plot.first_commits(store, image_dir)
 
 def splot_command(args):
     "Make a plot of a single project using SVNPlot"
@@ -151,6 +159,7 @@ def main():
 
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
+    _add_common_arguments(plot_parser)
     plot_parser.set_defaults(func=plot_command)
 
     splot_parser = subparsers.add_parser('splot',
