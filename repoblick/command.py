@@ -119,7 +119,7 @@ def _commits(local_repo_path):
     proc = Popen(['hg', 'log', '-R', local_repo_path, '--style', style], stdout=PIPE)
     for line in proc.stdout.readlines():
         line = line.rstrip()
-        hash_, date, author, message, files_add, files_mod, files_del = line.split('|')
+        hash_, date, author, files_add, files_mod, files_del, message = line.split('|', 6)
         timestamp, offset = [int(d) for d in date.split(' ')]
         date = datetime.fromtimestamp(timestamp) + timedelta(seconds=offset)
         files = {}
