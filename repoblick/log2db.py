@@ -55,52 +55,6 @@ def mirror_repo(remote_url, local_path, max_commits=None):
     devnull.close()
 
 
-class HgMirror:
-    "Local mirror of a remote hg repo"
-
-    def __init__(self, remote_repo, local_repo):
-        self.remote_repo = remote_repo
-        self.local_repo = local_repo
-        # for performance reasons
-        self.ui = ui.ui()
-
-    def __str__(self):
-        return 'HgMirror(remote_repo=%s, local_repo=%s)' % (self.remote_repo, self.local_repo)
-
-    def commits(self):
-        """Return Commit instances"""
-        dir_ = os.path.dirname(__file__)
-        style = os.path.join(dir_, '..', 'hg/style')
-        proc = Popen(['hg', 'log', '-R', self.local_repo, '--style', style], stdout=PIPE)
-        def file_split(line):
-            if line:
-                return line.split(';')
-            else:
-                return ()
-        for line in proc.stdout.readlines():
-            line = line.rstrip()
-            hash_, date, author, message, files_add, files_mod, files_del = line.split('|')
-            timestamp, offset = [int(d) for d in date.split(' ')]
-            date = datetime.fromtimestamp(timestamp) + timedelta(seconds=offset)
-            files = {}
-            for f in file_split(files_add):
-                files[f] = ADD
-            for f in file_split(files_mod):
-                files[f] = MOD
-            for f in file_split(files_del):
-                files[f] = DEL
-            yield Commit(hash_, date, author, message, files)
-
-    def changes(self, commit):
-        "Return FileChange instances"
-        repo = hg.repository(self.ui, path=self.local_repo)
-        node2 = repo.lookup(commit.hash)
-        node1 = repo[node2].parents()[0].node()
-        lines = util.iterlines(patch.diff(repo, node1, node2))
-        for f in patch.diffstatdata(lines):
-            yield FileChange(f[0], commit.file_changes[f[0]], f[1], f[2], f[3])
-
-
 def log2db(store_or_path, host, project, commits=2, working_dir='mirror'):
     """Make log-related entries in the database for a single project"""
     lister = repolist.get_lister(host)

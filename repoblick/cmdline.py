@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from repoblick import repolist, HostInfo
+from repoblick.command import import_log
 from repoblick.log2db import mirror_repo
 from repoblick.store import SqliteStore
 from repoblick.utils import mkdirs, Timer
@@ -63,8 +64,23 @@ def mirror_command(args):
         print 'Warning: No projects found or given'
 
 def log2db_command(args):
-    "Process logs of repositories"
-    print 'Not implemented yet', args
+    "Process logs of repositories and put them into the database"
+    store = SqliteStore(args.dir)
+    host_info, projects = _host_info_and_projects(store, args)
+    if not projects:
+        projects = _projects_from_store(store, host_info)
+    if not projects and not args.only_this_step:
+        list_command(args)
+        projects = _projects_from_store(store, host_info)
+    if projects:
+        for prj in projects:
+            projectid, _ = store.add_project(host_info.id, prj)
+            path = host_info.project_local_path(args.dir, prj)
+            if not os.path.exists(os.path.join(path, '.hg')) and not args.only_this_step:
+                source = host_info.project_remote_url(prj)
+                mirror_repo(source, path)
+            with Timer('Process logs %s' % (path)):
+                import_log(store, projectid, path)
 
 def plot_command(args):
     "Make a plot of log data"
@@ -110,6 +126,7 @@ def main():
 
     log2db_parser = subparsers.add_parser('log2db',
         help=log2db_command.__doc__)
+    _add_common_arguments(log2db_parser)
     log2db_parser.set_defaults(func=log2db_command)
 
     plot_parser = subparsers.add_parser('plot',
