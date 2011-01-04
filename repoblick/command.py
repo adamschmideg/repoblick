@@ -4,8 +4,9 @@ import os
 
 from mercurial import hg, patch, ui, util
 
-from repoblick import HostInfo
-from repoblick.log2db import Commit, FileChange, ADD, MOD, DEL
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from repoblick import Commit, FileChange, HostInfo, ADD, MOD, DEL
 from repoblick.store import SqliteStore
 from repoblick.utils import Timer, make_int
 
@@ -58,19 +59,19 @@ def _split_host(store, host):
     >>> import tempfile, shutil
     >>> db_dir = tempfile.mkdtemp()
     >>> store = SqliteStore(db_dir)
-    >>> info, prj = split_host(store, 'bb')
+    >>> info, prj = _split_host(store, 'bb')
     >>> prj
     >>> info.name
     u'bitbucket'
-    >>> info, prj = split_host(store, 'https://bitbucket.org/foo/bar')
+    >>> info, prj = _split_host(store, 'https://bitbucket.org/foo/bar')
     >>> prj
     'foo/bar'
     >>> info.name
     u'bitbucket'
     
     Unrecognized hosts are saved
-    >>> info, prj = split_host(store, '/path/to/location')
-    >>> new_info, prj = split_host(store, '/path/to/location')
+    >>> info, prj = _split_host(store, '/path/to/location')
+    >>> new_info, prj = _split_host(store, '/path/to/location')
     >>> info.id == new_info.id
     True
     >>> shutil.rmtree(db_dir)
