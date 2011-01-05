@@ -111,7 +111,10 @@ def plot_command(args):
     image_dir = os.path.join(args.dir, 'output', host_info.name)
     mkdirs(image_dir)
     with Timer('Generate plots to %s' % image_dir):
-        plot.first_commits(store, image_dir)
+        if args.query:
+            plot.custom_queries(store, image_dir, args.query)
+        else:
+            plot.first_commits(store, image_dir)
 
 def splot_command(args):
     "Make a plot of a single project using SVNPlot"
@@ -164,6 +167,8 @@ def main():
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
     _add_common_arguments(plot_parser)
+    plot_parser.add_argument('-q', '--query',
+        action='append')
     plot_parser.set_defaults(func=plot_command)
 
     splot_parser = subparsers.add_parser('splot',

@@ -26,6 +26,15 @@ def first_commits(store, image_dir):
     image_path = os.path.join(image_dir, 'first-commits.png')
     fig.savefig(image_path)
 
-
-if __name__ == '__main__':
-    first_commits('/tmp/lof.sqlite')
+def custom_queries(store, image_dir, queries):
+    '''Plot custom sql queries in a line chart'''
+    fig = plt.figure()
+    subplot = fig.add_subplot(111)
+    for query in queries:
+        store.cursor.execute(query, [])
+        data =[rec[0] for rec in store.cursor]
+        label = store.cursor.description[0][0]
+        subplot.plot(data, label=label)
+    subplot.legend()
+    image_path = os.path.join(image_dir, 'custom.png')
+    fig.savefig(image_path)
