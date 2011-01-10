@@ -5,10 +5,14 @@ from lxml import html
 
 from repoblick.utils import make_int, Timer
 
-def list_repos(self, start_page, pages):
+_ITEMS_PER_PAGE = 20
+
+def list_repos(self, start_index, index_count):
     subpage = 'all/commits'
-    for p in range(start_page, start_page + pages):
-        url = 'https://bitbucket.org/repo/%s/%s' % (subpage, p)
+    start_page = _ITEMS_PER_PAGE * start_index
+    end_page = start_page + int(index_count / _ITEMS_PER_PAGE)
+    for page_number in range(start_page, end_page):
+        url = 'https://bitbucket.org/repo/%s/%s' % (subpage, page_number)
         with Timer('Read %s' % url):
             page = html.parse(urlopen(url))
         projects = page.xpath("/html/body/div/div/ul[@id='repositories']/li/dl")

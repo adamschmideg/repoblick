@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 A command line interface to the full repoblick functionality
 """
@@ -41,7 +42,7 @@ def list_command(args):
         # Try to get lister
         lister = __import__(host_info.lister_module, fromlist=['list_repos'])
         with Timer('List repos at %s' % host_info.name):
-            for repo in lister.list_repos(host_info, args.start_page, args.pages):
+            for repo in lister.list_repos(host_info, args.start_index, args.index_count):
                 store.add_project(host_info.id, repo[0], repo[1])
             store.commit()
     else:
@@ -106,6 +107,12 @@ def plot_command(args):
     "Make a plot of log data"
     store = SqliteStore(args.dir)
     host_info, projects = _host_info_and_projects(store, args)
+    if not projects:
+        projects = _projects_from_store(store, host_info)
+    if not projects and not args.only_this_step:
+        statdb_command(args)
+        projects = _projects_from_store(store, host_info)
+    # TODO: plot only selected projects
     statdb = os.path.join(args.dir, 'statdb.sqlite')
     store.cursor.execute('attach database "%s" as stat' % statdb, [])
     image_dir = os.path.join(args.dir, 'output', host_info.name)
@@ -130,46 +137,47 @@ def _add_common_arguments(parser):
 def main():
     """Process cmdline args and call the appropriate function"""
     parser = argparse.ArgumentParser(description='Explore version controlled repositories')
-    parser.add_argument('-d', '--dir',
-        help='Directory to store databases and repository mirrors',
-        default=os.path.expanduser('~/.repoblick'))
-    parser.add_argument('-f', '--from-file',
-        help='File to read for projects')
-    parser.add_argument('-o', '--only-this-step',
-        help='Do not perform operations of previous steps even if needed',
-        action='store_true')
-    parser.add_argument('-c', '--commits',
-        help='Maximum number of commits to mirror', type=int)
-    parser.add_argument('-s', '--start-page', default=1, type=int)
-    parser.add_argument('-p', '--pages', default=1, type=int)
     subparsers = parser.add_subparsers()
-
     list_parser = subparsers.add_parser('list',
         help=list_command.__doc__)
-    _add_common_arguments(list_parser)
     list_parser.set_defaults(func=list_command)
-
     mirror_parser = subparsers.add_parser('mirror',
         help=mirror_command.__doc__)
-    _add_common_arguments(mirror_parser)
     mirror_parser.set_defaults(func=mirror_command)
-
     import_parser = subparsers.add_parser('import',
         help=import_command.__doc__)
-    _add_common_arguments(import_parser)
     import_parser.set_defaults(func=import_command)
-
     statdb_parser = subparsers.add_parser('statdb',
         help=statdb_command.__doc__)
-    _add_common_arguments(statdb_parser)
     statdb_parser.set_defaults(func=statdb_command)
-
     plot_parser = subparsers.add_parser('plot',
         help=plot_command.__doc__)
-    _add_common_arguments(plot_parser)
+    plot_parser.set_defaults(func=plot_command)
+    splot_parser = subparsers.add_parser('splot',
+        help=splot_command.__doc__)
+    splot_parser.set_defaults(func=splot_command)
+
+    for prs in [list_parser, mirror_parser, import_parser, statdb_parser, plot_parser]:
+        prs.add_argument('host',
+            help='Either a known host (see %(prog)s show hosts), or a local path')
+        prs.add_argument('projects', nargs='*',
+            help='A specific project at the host.  If not given, all projects at host are used')
+        prs.add_argument('-d', '--dir',
+            help='Directory to store databases and repository mirrors',
+            default=os.path.expanduser('~/.repoblick'))
+        prs.add_argument('-f', '--from-file',
+            help='File to read for projects')
+        prs.add_argument('-o', '--only-this-step',
+            help='Do not perform operations of previous steps even if needed',
+            action='store_true')
+        prs.add_argument('-c', '--commits',
+            help='Maximum number of commits to mirror', type=int)
+        prs.add_argument('-s', '--start-index',
+            help='Start listing at this index', default=1, type=int)
+        prs.add_argument('-i', '--index-count', default=1, type=int)
+
     plot_parser.add_argument('-q', '--query',
         action='append')
-    plot_parser.set_defaults(func=plot_command)
 
     splot_parser = subparsers.add_parser('splot',
         help=splot_command.__doc__)
