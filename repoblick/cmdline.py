@@ -124,7 +124,7 @@ def plot_command(args):
             plot.first_commits(store, image_dir)
 
 def splot_command(args):
-    "Make a plot of a single project using SVNPlot"
+    "Make a plot of a single project using SVNPlot (not working yet)"
     print 'Not implemented yet', args
 
 def _add_common_arguments(parser):
@@ -134,8 +134,9 @@ def _add_common_arguments(parser):
     parser.add_argument('projects', nargs='*',
         help='A specific project at the host.  If not given, all projects at host are used')
 
-def main():
-    """Process cmdline args and call the appropriate function"""
+def make_parser():
+    """Get a command line parser with all subparsers, defaults, etc
+    configured"""
     parser = argparse.ArgumentParser(description='Explore version controlled repositories')
     subparsers = parser.add_subparsers()
     list_parser = subparsers.add_parser('list',
@@ -179,19 +180,16 @@ def main():
     plot_parser.add_argument('-q', '--query',
         action='append')
 
-    splot_parser = subparsers.add_parser('splot',
-        help=splot_command.__doc__)
     splot_parser.add_argument('-g', '--graph-dir',
         help='Where to generate graphs (default: %(default)s)',
         default='/tmp/graph')
     splot_parser.add_argument('-s', '--svnplot-db',
         help='Location of svnplot-specific database to be generated (default: %(default)s)',
         default='/tmp/svnplot.sqlite')
-    splot_parser.set_defaults(func=splot_command)
-
-    args = parser.parse_args()
-    args.func(args)
+    return parser
 
 
 if __name__ == '__main__':
-    main()
+    arg_parser = make_parser()
+    args = arg_parser.parse_args()
+    args.func(args)
